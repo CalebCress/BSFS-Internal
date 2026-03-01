@@ -51,7 +51,7 @@ function ProfileSetupForm() {
   }
 
   // Already has a profile — redirect based on status
-  if (profile !== null) {
+  if (profile) {
     if (profile.status === "pending") return <Navigate to="/pending" replace />;
     if (profile.status === "rejected") return <Navigate to="/rejected" replace />;
     return <Navigate to="/" replace />;

@@ -18,7 +18,7 @@ function ApprovedGate({ children }: { children: React.ReactNode }) {
   }
 
   // No profile yet — redirect to profile setup
-  if (profile === null) {
+  if (!profile) {
     const isAlumniSignUp = localStorage.getItem("bsfs_alumni_signup") === "1";
     return <Navigate to={isAlumniSignUp ? "/alumni-setup" : "/setup"} replace />;
   }

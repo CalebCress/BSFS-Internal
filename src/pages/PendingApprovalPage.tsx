@@ -26,7 +26,7 @@ function PendingContent() {
   }
 
   // No profile — go to setup
-  if (profile === null) {
+  if (!profile) {
     return <Navigate to="/setup" replace />;
   }
 

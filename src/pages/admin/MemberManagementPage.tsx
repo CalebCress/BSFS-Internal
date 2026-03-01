@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Search, Trash2, Mail } from "lucide-react";
-import { ROLES, MEMBER_STATUSES, type Role, type MemberStatus } from "@/lib/constants";
+import { ROLES, MEMBER_STATUSES, type MemberStatus } from "@/lib/constants";
 import { toast } from "sonner";
 
 function getInitials(name: string): string {

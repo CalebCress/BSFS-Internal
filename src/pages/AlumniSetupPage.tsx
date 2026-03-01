@@ -52,7 +52,7 @@ function AlumniSetupForm() {
   }
 
   // Already has a profile — redirect based on status
-  if (profile !== null) {
+  if (profile) {
     localStorage.removeItem("bsfs_alumni_signup");
     if (profile.status === "pending") return <Navigate to="/pending" replace />;
     if (profile.status === "rejected") return <Navigate to="/rejected" replace />;
