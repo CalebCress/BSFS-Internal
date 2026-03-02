@@ -20,6 +20,7 @@ import type * as interviewSlots from "../interviewSlots.js";
 import type * as massive from "../massive.js";
 import type * as memberTheses from "../memberTheses.js";
 import type * as profiles from "../profiles.js";
+import type * as resources from "../resources.js";
 import type * as reviews from "../reviews.js";
 import type * as stockTheses from "../stockTheses.js";
 import type * as stocks from "../stocks.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   massive: typeof massive;
   memberTheses: typeof memberTheses;
   profiles: typeof profiles;
+  resources: typeof resources;
   reviews: typeof reviews;
   stockTheses: typeof stockTheses;
   stocks: typeof stocks;

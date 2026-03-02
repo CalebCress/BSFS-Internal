@@ -24,6 +24,9 @@ export const create = mutation({
     startTime: v.string(),
     endTime: v.string(),
     location: v.optional(v.string()),
+    isCorporateMarketUpdate: v.optional(v.boolean()),
+    corporateAssignee: v.optional(v.id("users")),
+    marketAssignee: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const userId = await requireBoardMember(ctx);
@@ -36,6 +39,13 @@ export const create = mutation({
       endTime: args.endTime,
       location: args.location,
       createdBy: userId,
+      isCorporateMarketUpdate: args.isCorporateMarketUpdate,
+      corporateAssignee: args.isCorporateMarketUpdate
+        ? args.corporateAssignee
+        : undefined,
+      marketAssignee: args.isCorporateMarketUpdate
+        ? args.marketAssignee
+        : undefined,
     });
   },
 });
@@ -49,6 +59,7 @@ export const createRecurring = mutation({
     endTime: v.string(),
     startDate: v.string(),
     weeksCount: v.optional(v.number()),
+    isCorporateMarketUpdate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await requireBoardMember(ctx);
@@ -85,6 +96,9 @@ export const createRecurring = mutation({
         endTime: args.endTime,
         seriesId,
         createdBy: userId,
+        isCorporateMarketUpdate: args.isCorporateMarketUpdate,
+        // corporateAssignee and marketAssignee intentionally omitted
+        // so each occurrence gets independent assignments
       });
       eventsCreated++;
     }
@@ -111,7 +125,36 @@ export const list = query({
       events = events.filter((e) => e.date.startsWith(prefix));
     }
 
-    return events.sort((a, b) => {
+    // Enrich with assignee names
+    const enriched = await Promise.all(
+      events.map(async (event) => {
+        let corporateAssigneeName: string | null = null;
+        let marketAssigneeName: string | null = null;
+
+        if (event.corporateAssignee) {
+          const profile = await ctx.db
+            .query("profiles")
+            .withIndex("by_userId", (q) =>
+              q.eq("userId", event.corporateAssignee!)
+            )
+            .unique();
+          corporateAssigneeName = profile?.displayName ?? null;
+        }
+        if (event.marketAssignee) {
+          const profile = await ctx.db
+            .query("profiles")
+            .withIndex("by_userId", (q) =>
+              q.eq("userId", event.marketAssignee!)
+            )
+            .unique();
+          marketAssigneeName = profile?.displayName ?? null;
+        }
+
+        return { ...event, corporateAssigneeName, marketAssigneeName };
+      })
+    );
+
+    return enriched.sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.startTime.localeCompare(b.startTime);
     });
@@ -127,6 +170,9 @@ export const update = mutation({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     location: v.optional(v.string()),
+    isCorporateMarketUpdate: v.optional(v.boolean()),
+    corporateAssignee: v.optional(v.id("users")),
+    marketAssignee: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     await requireBoardMember(ctx);
@@ -142,6 +188,19 @@ export const update = mutation({
     if (args.endTime !== undefined) updates.endTime = args.endTime;
     if (args.location !== undefined) updates.location = args.location;
 
+    if (args.isCorporateMarketUpdate !== undefined) {
+      updates.isCorporateMarketUpdate = args.isCorporateMarketUpdate;
+      if (!args.isCorporateMarketUpdate) {
+        // Clear assignees when toggling off
+        updates.corporateAssignee = undefined;
+        updates.marketAssignee = undefined;
+      }
+    }
+    if (args.corporateAssignee !== undefined)
+      updates.corporateAssignee = args.corporateAssignee;
+    if (args.marketAssignee !== undefined)
+      updates.marketAssignee = args.marketAssignee;
+
     await ctx.db.patch(args.eventId, updates);
   },
 });
@@ -153,6 +212,16 @@ export const remove = mutation({
 
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
+
+    // Cascade-delete associated resource + file
+    const resource = await ctx.db
+      .query("resources")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .unique();
+    if (resource) {
+      await ctx.storage.delete(resource.fileStorageId);
+      await ctx.db.delete(resource._id);
+    }
 
     await ctx.db.delete(args.eventId);
   },
@@ -169,6 +238,16 @@ export const removeSeries = mutation({
       .collect();
 
     for (const event of events) {
+      // Cascade-delete associated resource + file
+      const resource = await ctx.db
+        .query("resources")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .unique();
+      if (resource) {
+        await ctx.storage.delete(resource.fileStorageId);
+        await ctx.db.delete(resource._id);
+      }
+
       await ctx.db.delete(event._id);
     }
 

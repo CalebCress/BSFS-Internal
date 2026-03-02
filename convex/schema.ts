@@ -132,9 +132,23 @@ export default defineSchema({
     location: v.optional(v.string()),
     seriesId: v.optional(v.string()),
     createdBy: v.id("users"),
+    isCorporateMarketUpdate: v.optional(v.boolean()),
+    corporateAssignee: v.optional(v.id("users")),
+    marketAssignee: v.optional(v.id("users")),
   })
     .index("by_date", ["date"])
     .index("by_series", ["seriesId"]),
+
+  // Uploaded presentation resources
+  resources: defineTable({
+    title: v.string(),
+    eventId: v.id("events"),
+    fileStorageId: v.id("_storage"),
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_uploadedAt", ["uploadedAt"]),
 
   // Reviews/scores given to applicants
   reviews: defineTable({

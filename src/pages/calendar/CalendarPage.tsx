@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -6,8 +7,15 @@ import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventDialog } from "./components/EventDialog";
+import { PresentationUpload } from "./components/PresentationUpload";
 import {
   Plus,
   ChevronLeft,
@@ -40,6 +48,11 @@ interface EventData {
   location?: string;
   seriesId?: string;
   createdBy: Id<"users">;
+  isCorporateMarketUpdate?: boolean;
+  corporateAssignee?: Id<"users">;
+  marketAssignee?: Id<"users">;
+  corporateAssigneeName?: string | null;
+  marketAssigneeName?: string | null;
 }
 
 export function CalendarPage() {
@@ -51,6 +64,8 @@ export function CalendarPage() {
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Queries
   const events = useQuery(api.events.list, {
@@ -296,7 +311,10 @@ export function CalendarPage() {
                   className={`min-h-[80px] border-b border-r p-1 cursor-pointer transition-colors hover:bg-muted/20 ${
                     isSelected ? "bg-accent/20 ring-1 ring-accent" : ""
                   }`}
-                  onClick={() => setSelectedDate(cell.dateStr)}
+                  onClick={() => {
+                    setSelectedDate(cell.dateStr);
+                    setDayDialogOpen(true);
+                  }}
                 >
                   <div className="flex items-center justify-between px-1">
                     <span
@@ -314,7 +332,11 @@ export function CalendarPage() {
                       {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event._id}
-                          className="truncate rounded bg-blue-100 px-1 py-0.5 text-[10px] font-medium text-blue-800"
+                          className={`truncate rounded px-1 py-0.5 text-[10px] font-medium ${
+                            event.isCorporateMarketUpdate
+                              ? "bg-green-100 text-green-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
                         >
                           {event.title}
                         </div>
@@ -347,17 +369,21 @@ export function CalendarPage() {
         </div>
       )}
 
-      {/* Selected day detail */}
-      {selectedDate && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold">{formatDate(selectedDate)}</h3>
+      {/* Selected day dialog */}
+      <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDate ? formatDate(selectedDate) : ""}
+            </DialogTitle>
+          </DialogHeader>
 
           {selectedEvents.length === 0 && selectedInterviews.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No events or interviews on this day.
             </p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {/* Events */}
               {selectedEvents.map((event) => (
                 <Card key={event._id}>
@@ -380,7 +406,10 @@ export function CalendarPage() {
                               variant="ghost"
                               size="sm"
                               className="h-7 w-7 p-0"
-                              onClick={() => handleEdit(event)}
+                              onClick={() => {
+                                setDayDialogOpen(false);
+                                handleEdit(event);
+                              }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -410,6 +439,52 @@ export function CalendarPage() {
                       <p className="text-sm text-muted-foreground">
                         {event.description}
                       </p>
+                    )}
+                    {/* Corporate & Market Update details */}
+                    {event.isCorporateMarketUpdate && (
+                      <div className="space-y-1.5 border-t pt-2">
+                        <Badge
+                          variant="secondary"
+                          className="bg-green-50 text-green-700 text-[10px]"
+                        >
+                          Corporate & Market Update
+                        </Badge>
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium">Corporate:</span>{" "}
+                          {event.corporateAssigneeName && event.corporateAssignee ? (
+                            <button
+                              className="underline underline-offset-2 hover:text-foreground transition-colors"
+                              onClick={() => {
+                                setDayDialogOpen(false);
+                                navigate(`/members/${event.corporateAssignee}`);
+                              }}
+                            >
+                              {event.corporateAssigneeName}
+                            </button>
+                          ) : (
+                            "Unassigned"
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium">Market:</span>{" "}
+                          {event.marketAssigneeName && event.marketAssignee ? (
+                            <button
+                              className="underline underline-offset-2 hover:text-foreground transition-colors"
+                              onClick={() => {
+                                setDayDialogOpen(false);
+                                navigate(`/members/${event.marketAssignee}`);
+                              }}
+                            >
+                              {event.marketAssigneeName}
+                            </button>
+                          ) : (
+                            "Unassigned"
+                          )}
+                        </div>
+                        {isBoardMember && (
+                          <PresentationUpload eventId={event._id} />
+                        )}
+                      </div>
                     )}
                     {isBoardMember && event.seriesId && (
                       <Button
@@ -469,8 +544,8 @@ export function CalendarPage() {
               ))}
             </div>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Calendar Feed */}
       <Card>

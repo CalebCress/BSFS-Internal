@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import {
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ChevronsUpDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface EventData {
@@ -30,6 +46,9 @@ interface EventData {
   endTime: string;
   location?: string;
   seriesId?: string;
+  isCorporateMarketUpdate?: boolean;
+  corporateAssignee?: Id<"users">;
+  marketAssignee?: Id<"users">;
 }
 
 interface EventDialogProps {
@@ -56,6 +75,7 @@ export function EventDialog({
   const createEvent = useMutation(api.events.create);
   const createRecurring = useMutation(api.events.createRecurring);
   const updateEvent = useMutation(api.events.update);
+  const profiles = useQuery(api.profiles.listProfiles);
 
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -67,8 +87,16 @@ export function EventDialog({
   const [recurring, setRecurring] = useState(false);
   const [dayOfWeek, setDayOfWeek] = useState("1");
   const [weeksCount, setWeeksCount] = useState(12);
+  const [isCorporateMarketUpdate, setIsCorporateMarketUpdate] = useState(false);
+  const [corporateAssignee, setCorporateAssignee] = useState("");
+  const [marketAssignee, setMarketAssignee] = useState("");
+  const [corporatePopoverOpen, setCorporatePopoverOpen] = useState(false);
+  const [marketPopoverOpen, setMarketPopoverOpen] = useState(false);
 
   const isEditing = !!editingEvent;
+
+  // All approved members for assignment dropdowns
+  const allMembers = profiles ?? [];
 
   useEffect(() => {
     if (editingEvent) {
@@ -79,6 +107,9 @@ export function EventDialog({
       setEndTime(editingEvent.endTime);
       setLocation(editingEvent.location ?? "");
       setRecurring(false);
+      setIsCorporateMarketUpdate(editingEvent.isCorporateMarketUpdate ?? false);
+      setCorporateAssignee(editingEvent.corporateAssignee ?? "");
+      setMarketAssignee(editingEvent.marketAssignee ?? "");
     } else {
       setTitle("");
       setDescription("");
@@ -89,6 +120,9 @@ export function EventDialog({
       setRecurring(false);
       setDayOfWeek("1");
       setWeeksCount(12);
+      setIsCorporateMarketUpdate(false);
+      setCorporateAssignee("");
+      setMarketAssignee("");
     }
   }, [editingEvent, open]);
 
@@ -111,6 +145,15 @@ export function EventDialog({
           startTime,
           endTime,
           location: location.trim() || undefined,
+          isCorporateMarketUpdate,
+          corporateAssignee:
+            isCorporateMarketUpdate && corporateAssignee
+              ? (corporateAssignee as Id<"users">)
+              : undefined,
+          marketAssignee:
+            isCorporateMarketUpdate && marketAssignee
+              ? (marketAssignee as Id<"users">)
+              : undefined,
         });
         toast.success("Event updated");
       } else if (recurring) {
@@ -127,6 +170,7 @@ export function EventDialog({
           endTime,
           startDate: date,
           weeksCount,
+          isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
         });
         toast.success(`Created ${result.eventsCreated} recurring events`);
       } else {
@@ -142,6 +186,15 @@ export function EventDialog({
           startTime,
           endTime,
           location: location.trim() || undefined,
+          isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
+          corporateAssignee:
+            isCorporateMarketUpdate && corporateAssignee
+              ? (corporateAssignee as Id<"users">)
+              : undefined,
+          marketAssignee:
+            isCorporateMarketUpdate && marketAssignee
+              ? (marketAssignee as Id<"users">)
+              : undefined,
         });
         toast.success("Event created");
       }
@@ -194,12 +247,10 @@ export function EventDialog({
           {/* Recurring toggle - create mode only */}
           {!isEditing && (
             <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="recurring"
                 checked={recurring}
-                onChange={(e) => setRecurring(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300"
+                onCheckedChange={(checked) => setRecurring(checked === true)}
               />
               <Label htmlFor="recurring" className="cursor-pointer">
                 Recurring weekly event
@@ -293,6 +344,122 @@ export function EventDialog({
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Room 301"
               />
+            </div>
+          )}
+
+          {/* Corporate & Market Update checkbox */}
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="corporateMarketUpdate"
+              checked={isCorporateMarketUpdate}
+              onCheckedChange={(checked) =>
+                setIsCorporateMarketUpdate(checked === true)
+              }
+            />
+            <Label htmlFor="corporateMarketUpdate" className="cursor-pointer">
+              Corporate & Market Update
+            </Label>
+          </div>
+
+          {/* Member assignment dropdowns (shown when C&M checked and NOT recurring create) */}
+          {isCorporateMarketUpdate && !(recurring && !isEditing) && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Corporate Presenter</Label>
+                <Popover open={corporatePopoverOpen} onOpenChange={setCorporatePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={corporatePopoverOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {corporateAssignee
+                        ? allMembers.find((m) => m.userId === corporateAssignee)?.displayName ?? "Select member..."
+                        : "Select member..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search member..." />
+                      <CommandList>
+                        <CommandEmpty>No member found.</CommandEmpty>
+                        <CommandGroup>
+                          {allMembers.map((member) => (
+                            <CommandItem
+                              key={member.userId}
+                              value={member.displayName}
+                              onSelect={() => {
+                                setCorporateAssignee(
+                                  corporateAssignee === member.userId ? "" : member.userId
+                                );
+                                setCorporatePopoverOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  corporateAssignee === member.userId ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {member.displayName}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Market Presenter</Label>
+                <Popover open={marketPopoverOpen} onOpenChange={setMarketPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={marketPopoverOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {marketAssignee
+                        ? allMembers.find((m) => m.userId === marketAssignee)?.displayName ?? "Select member..."
+                        : "Select member..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search member..." />
+                      <CommandList>
+                        <CommandEmpty>No member found.</CommandEmpty>
+                        <CommandGroup>
+                          {allMembers.map((member) => (
+                            <CommandItem
+                              key={member.userId}
+                              value={member.displayName}
+                              onSelect={() => {
+                                setMarketAssignee(
+                                  marketAssignee === member.userId ? "" : member.userId
+                                );
+                                setMarketPopoverOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  marketAssignee === member.userId ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {member.displayName}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           )}
 
