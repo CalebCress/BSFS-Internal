@@ -47,16 +47,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "applications", element: <ApplicationsOverviewPage /> },
-      { path: "applications/forms", element: <FormsPage /> },
-      { path: "applications/applicants", element: <ApplicantsPage /> },
-      {
-        path: "applications/applicants/:id",
-        element: <ApplicantDetailPage />,
-      },
-      { path: "applications/interviews", element: <InterviewsPage /> },
-      { path: "applications/reviews", element: <ReviewsPage /> },
+      { index: true, element: <CalendarPage /> },
       { path: "calendar", element: <CalendarPage /> },
       { path: "members", element: <MembersPage /> },
       { path: "members/:userId", element: <MemberProfilePage /> },

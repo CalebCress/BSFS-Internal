@@ -83,57 +83,6 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Dashboard (hidden from alumni) */}
-              {!isAlumni && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === "/"}
-                    onClick={() => navigate("/")}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>Dashboard</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-
-              {/* Applications (hidden from alumni) */}
-              {!isAlumni && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={isInApplications}
-                    onClick={() => setApplicationsOpen(!applicationsOpen)}
-                  >
-                    <ClipboardList className="h-4 w-4" />
-                    <span>Applications</span>
-                    <ChevronRight
-                      className={`ml-auto h-4 w-4 transition-transform ${
-                        applicationsOpen ? "rotate-90" : ""
-                      }`}
-                    />
-                  </SidebarMenuButton>
-                  {applicationsOpen && (
-                    <SidebarMenuSub>
-                      {applicationSubItems.map((item) => {
-                        const isSubActive =
-                          item.path === "/applications"
-                            ? location.pathname === "/applications"
-                            : location.pathname.startsWith(item.path);
-                        return (
-                          <SidebarMenuSubItem key={item.path}>
-                            <SidebarMenuSubButton
-                              isActive={isSubActive}
-                              onClick={() => navigate(item.path)}
-                            >
-                              <span>{item.title}</span>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        );
-                      })}
-                    </SidebarMenuSub>
-                  )}
-                </SidebarMenuItem>
-              )}
-
               {/* Calendar (hidden from alumni) */}
               {!isAlumni && (
                 <SidebarMenuItem>
@@ -203,7 +152,7 @@ export function AppSidebar() {
                   onClick={() => navigate("/alumni")}
                 >
                   <GraduationCap className="h-4 w-4" />
-                  <span>Alumni Network</span>
+                  <span>Alumni</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
