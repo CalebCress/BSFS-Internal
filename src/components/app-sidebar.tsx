@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-  LayoutDashboard,
-  ClipboardList,
   CalendarDays,
   TrendingUp,
   Users,
@@ -35,14 +33,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-const applicationSubItems = [
-  { title: "Overview", path: "/applications" },
-  { title: "Forms", path: "/applications/forms" },
-  { title: "Applicants", path: "/applications/applicants" },
-  { title: "Interviews", path: "/applications/interviews" },
-  { title: "Reviews", path: "/applications/reviews" },
-];
-
 const stockSubItems = [
   { title: "All Stocks", path: "/stocks" },
   { title: "My Theses", path: "/stocks/my-theses" },
@@ -55,14 +45,8 @@ export function AppSidebar() {
   const { profile, isBoardMember, isAlumni } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
 
-  const isInApplications = location.pathname.startsWith("/applications");
   const isInStocks = location.pathname.startsWith("/stocks");
-  const [applicationsOpen, setApplicationsOpen] = useState(isInApplications);
   const [stocksOpen, setStocksOpen] = useState(isInStocks);
-
-  useEffect(() => {
-    if (isInApplications) setApplicationsOpen(true);
-  }, [isInApplications]);
 
   useEffect(() => {
     if (isInStocks) setStocksOpen(true);
