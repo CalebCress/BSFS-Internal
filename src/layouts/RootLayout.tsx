@@ -1,6 +1,6 @@
 import { Authenticated, Unauthenticated } from "convex/react";
 import { Navigate, Outlet } from "react-router-dom";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "sonner";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
@@ -45,6 +45,10 @@ export function RootLayout() {
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
+              <header className="flex items-center gap-2 border-b px-4 py-3 md:hidden">
+                <SidebarTrigger />
+                <span className="text-sm font-semibold">BSFS Internal</span>
+              </header>
               <main className="flex-1 overflow-auto p-6">
                 <Outlet />
               </main>
