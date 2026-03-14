@@ -131,7 +131,7 @@ export function StockDetailPage() {
                 </span>
               )}
             </h1>
-            <PriceHeader data={prevDayData} loading={prevDayLoading} />
+            <PriceHeader data={prevDayData} loading={prevDayLoading} ticker={normalizedTicker} />
           </div>
           <Button onClick={() => void handleWriteOrEditThesis()}>
             {myThesis ? (

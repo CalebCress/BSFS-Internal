@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { RootLayout } from "./layouts/RootLayout";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
+import { RequireAccess } from "./components/RequireAccess";
 import { LoginPage } from "./pages/LoginPage";
 import { CalendarPage } from "./pages/calendar/CalendarPage";
 import { StocksPage } from "./pages/stocks/StocksPage";
@@ -41,18 +42,18 @@ export const router = createBrowserRouter([
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <CalendarPage /> },
-      { path: "calendar", element: <CalendarPage /> },
+      { index: true, element: <RequireAccess check="member"><CalendarPage /></RequireAccess> },
+      { path: "calendar", element: <RequireAccess check="member"><CalendarPage /></RequireAccess> },
       { path: "members", element: <MembersPage /> },
       { path: "members/:userId", element: <MemberProfilePage /> },
-      { path: "stocks", element: <StocksPage /> },
-      { path: "stocks/my-theses", element: <MyThesesPage /> },
-      { path: "stocks/:ticker", element: <StockDetailPage /> },
-      { path: "admin/approvals", element: <MemberApprovalsPage /> },
-      { path: "admin/members", element: <MemberManagementPage /> },
-      { path: "admin/attendance", element: <AttendancePage /> },
+      { path: "stocks", element: <RequireAccess check="member"><StocksPage /></RequireAccess> },
+      { path: "stocks/my-theses", element: <RequireAccess check="member"><MyThesesPage /></RequireAccess> },
+      { path: "stocks/:ticker", element: <RequireAccess check="member"><StockDetailPage /></RequireAccess> },
+      { path: "admin/approvals", element: <RequireAccess check="admin"><MemberApprovalsPage /></RequireAccess> },
+      { path: "admin/members", element: <RequireAccess check="admin"><MemberManagementPage /></RequireAccess> },
+      { path: "admin/attendance", element: <RequireAccess check="attendance"><AttendancePage /></RequireAccess> },
       { path: "alumni", element: <AlumniPage /> },
-      { path: "resources", element: <ResourcesPage /> },
+      { path: "resources", element: <RequireAccess check="member"><ResourcesPage /></RequireAccess> },
     ],
   },
 ]);
