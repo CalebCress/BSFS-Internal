@@ -53,6 +53,7 @@ interface EventData {
   marketAssignee?: Id<"users">;
   corporateAssigneeName?: string | null;
   marketAssigneeName?: string | null;
+  mandatoryAttendance?: boolean;
 }
 
 export function CalendarPage() {
@@ -391,6 +392,14 @@ export function CalendarPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{event.title}</span>
                       <div className="flex items-center gap-1">
+                        {event.mandatoryAttendance && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] bg-red-50 text-red-600"
+                          >
+                            Mandatory
+                          </Badge>
+                        )}
                         {event.seriesId && (
                           <Badge
                             variant="secondary"

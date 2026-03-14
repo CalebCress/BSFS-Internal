@@ -163,6 +163,9 @@ export const listAttendanceEvents = query({
 
     let events = await ctx.db.query("events").collect();
 
+    // Only show mandatory attendance events
+    events = events.filter((e: any) => e.mandatoryAttendance === true);
+
     // Filter by year/month if provided
     if (args.year !== undefined && args.month !== undefined) {
       const monthStr = String(args.month).padStart(2, "0");
@@ -211,12 +214,21 @@ export const getMemberStats = query({
       (p: any) => p.status === "approved" && p.role !== "alumni"
     );
 
-    // Get total events count (for percentage calculation)
+    // Get mandatory events only (for percentage calculation)
     const allEvents = await ctx.db.query("events").collect();
-    const totalEvents = allEvents.length;
+    const mandatoryEvents = allEvents.filter(
+      (e: any) => e.mandatoryAttendance === true
+    );
+    const totalEvents = mandatoryEvents.length;
+    const mandatoryEventIds = new Set(
+      mandatoryEvents.map((e: any) => e._id.toString())
+    );
 
-    // Get all attendance records
-    const allAttendance = await ctx.db.query("attendance").collect();
+    // Get attendance records for mandatory events only
+    const allAttendanceRaw = await ctx.db.query("attendance").collect();
+    const allAttendance = allAttendanceRaw.filter((a: any) =>
+      mandatoryEventIds.has(a.eventId.toString())
+    );
 
     // Build stats per member
     const stats = activeMembers.map((member: any) => {

@@ -27,9 +27,13 @@ export const create = mutation({
     isCorporateMarketUpdate: v.optional(v.boolean()),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
+    mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await requireBoardMember(ctx);
+
+    // Auto-set mandatory attendance for Corporate & Market Updates
+    const mandatory = args.isCorporateMarketUpdate ? true : args.mandatoryAttendance;
 
     return await ctx.db.insert("events", {
       title: args.title,
@@ -46,6 +50,7 @@ export const create = mutation({
       marketAssignee: args.isCorporateMarketUpdate
         ? args.marketAssignee
         : undefined,
+      mandatoryAttendance: mandatory,
     });
   },
 });
@@ -60,6 +65,7 @@ export const createRecurring = mutation({
     startDate: v.string(),
     weeksCount: v.optional(v.number()),
     isCorporateMarketUpdate: v.optional(v.boolean()),
+    mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const userId = await requireBoardMember(ctx);
@@ -82,6 +88,9 @@ export const createRecurring = mutation({
     if (daysUntil < 0) daysUntil += 7;
     start.setDate(start.getDate() + daysUntil);
 
+    // Auto-set mandatory attendance for Corporate & Market Updates
+    const mandatory = args.isCorporateMarketUpdate ? true : args.mandatoryAttendance;
+
     let eventsCreated = 0;
     for (let i = 0; i < weeks; i++) {
       const eventDate = new Date(start);
@@ -97,6 +106,7 @@ export const createRecurring = mutation({
         seriesId,
         createdBy: userId,
         isCorporateMarketUpdate: args.isCorporateMarketUpdate,
+        mandatoryAttendance: mandatory,
         // corporateAssignee and marketAssignee intentionally omitted
         // so each occurrence gets independent assignments
       });
@@ -173,6 +183,7 @@ export const update = mutation({
     isCorporateMarketUpdate: v.optional(v.boolean()),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
+    mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireBoardMember(ctx);
@@ -190,12 +201,17 @@ export const update = mutation({
 
     if (args.isCorporateMarketUpdate !== undefined) {
       updates.isCorporateMarketUpdate = args.isCorporateMarketUpdate;
-      if (!args.isCorporateMarketUpdate) {
+      if (args.isCorporateMarketUpdate) {
+        // Auto-set mandatory attendance for C&M Updates
+        updates.mandatoryAttendance = true;
+      } else {
         // Clear assignees when toggling off
         updates.corporateAssignee = undefined;
         updates.marketAssignee = undefined;
       }
     }
+    if (args.mandatoryAttendance !== undefined)
+      updates.mandatoryAttendance = args.mandatoryAttendance;
     if (args.corporateAssignee !== undefined)
       updates.corporateAssignee = args.corporateAssignee;
     if (args.marketAssignee !== undefined)

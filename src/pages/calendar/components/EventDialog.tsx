@@ -49,6 +49,7 @@ interface EventData {
   isCorporateMarketUpdate?: boolean;
   corporateAssignee?: Id<"users">;
   marketAssignee?: Id<"users">;
+  mandatoryAttendance?: boolean;
 }
 
 interface EventDialogProps {
@@ -90,6 +91,7 @@ export function EventDialog({
   const [isCorporateMarketUpdate, setIsCorporateMarketUpdate] = useState(false);
   const [corporateAssignee, setCorporateAssignee] = useState("");
   const [marketAssignee, setMarketAssignee] = useState("");
+  const [mandatoryAttendance, setMandatoryAttendance] = useState(false);
   const [corporatePopoverOpen, setCorporatePopoverOpen] = useState(false);
   const [marketPopoverOpen, setMarketPopoverOpen] = useState(false);
 
@@ -108,6 +110,7 @@ export function EventDialog({
       setLocation(editingEvent.location ?? "");
       setRecurring(false);
       setIsCorporateMarketUpdate(editingEvent.isCorporateMarketUpdate ?? false);
+      setMandatoryAttendance(editingEvent.mandatoryAttendance ?? false);
       setCorporateAssignee(editingEvent.corporateAssignee ?? "");
       setMarketAssignee(editingEvent.marketAssignee ?? "");
     } else {
@@ -121,6 +124,7 @@ export function EventDialog({
       setDayOfWeek("1");
       setWeeksCount(12);
       setIsCorporateMarketUpdate(false);
+      setMandatoryAttendance(false);
       setCorporateAssignee("");
       setMarketAssignee("");
     }
@@ -146,6 +150,7 @@ export function EventDialog({
           endTime,
           location: location.trim() || undefined,
           isCorporateMarketUpdate,
+          mandatoryAttendance,
           corporateAssignee:
             isCorporateMarketUpdate && corporateAssignee
               ? (corporateAssignee as Id<"users">)
@@ -171,6 +176,7 @@ export function EventDialog({
           startDate: date,
           weeksCount,
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
+          mandatoryAttendance: mandatoryAttendance || undefined,
         });
         toast.success(`Created ${result.eventsCreated} recurring events`);
       } else {
@@ -187,6 +193,7 @@ export function EventDialog({
           endTime,
           location: location.trim() || undefined,
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
+          mandatoryAttendance: mandatoryAttendance || undefined,
           corporateAssignee:
             isCorporateMarketUpdate && corporateAssignee
               ? (corporateAssignee as Id<"users">)
@@ -352,12 +359,35 @@ export function EventDialog({
             <Checkbox
               id="corporateMarketUpdate"
               checked={isCorporateMarketUpdate}
-              onCheckedChange={(checked) =>
-                setIsCorporateMarketUpdate(checked === true)
-              }
+              onCheckedChange={(checked) => {
+                const isChecked = checked === true;
+                setIsCorporateMarketUpdate(isChecked);
+                if (isChecked) setMandatoryAttendance(true);
+              }}
             />
             <Label htmlFor="corporateMarketUpdate" className="cursor-pointer">
               Corporate & Market Update
+            </Label>
+          </div>
+
+          {/* Mandatory Attendance checkbox */}
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="mandatoryAttendance"
+              checked={mandatoryAttendance}
+              onCheckedChange={(checked) =>
+                setMandatoryAttendance(checked === true)
+              }
+              disabled={isCorporateMarketUpdate}
+            />
+            <Label
+              htmlFor="mandatoryAttendance"
+              className={`cursor-pointer ${isCorporateMarketUpdate ? "text-muted-foreground" : ""}`}
+            >
+              Mandatory Attendance
+              {isCorporateMarketUpdate && (
+                <span className="ml-1 text-xs text-muted-foreground">(auto-enabled for C&M Updates)</span>
+              )}
             </Label>
           </div>
 

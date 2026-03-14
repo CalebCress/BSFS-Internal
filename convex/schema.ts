@@ -135,6 +135,7 @@ export default defineSchema({
     isCorporateMarketUpdate: v.optional(v.boolean()),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
+    mandatoryAttendance: v.optional(v.boolean()),
   })
     .index("by_date", ["date"])
     .index("by_series", ["seriesId"]),

@@ -96,6 +96,9 @@ export function RecordAttendanceTab() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{event.title}</span>
+                  <Badge variant="secondary" className="text-xs bg-red-50 text-red-600">
+                    Mandatory
+                  </Badge>
                   {event.totalRecords > 0 && (
                     <Badge variant="secondary" className="text-xs">
                       {event.presentCount}/{event.totalRecords} present
