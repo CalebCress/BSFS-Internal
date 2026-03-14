@@ -43,7 +43,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuthActions();
-  const { profile, isBoardMember, hasAdminAccess, canRecordAttendance, isAlumni } = useCurrentProfile();
+  const { profile, hasAdminAccess, canRecordAttendance, isAlumni } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
 
   const isInStocks = location.pathname.startsWith("/stocks");

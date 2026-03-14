@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { hasAdminAccess } from "./lib/permissions";
+import { hasAdminAccess } from "./permissions";
 
 export const getMyProfile = query({
   args: {},

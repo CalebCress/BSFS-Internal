@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { hasAttendanceAccess } from "./lib/permissions";
+import { hasAttendanceAccess } from "./permissions";
 
 async function requireAttendanceAccess(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx as any);
