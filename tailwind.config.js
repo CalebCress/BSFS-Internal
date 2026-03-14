@@ -19,6 +19,8 @@ export default {
   	},
   	extend: {
   		colors: {
+  			'bsfs-blue': '#0660A4',
+  			'bsfs-red': '#FD2601',
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

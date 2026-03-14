@@ -45,9 +45,9 @@ export function RootLayout() {
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
-              <header className="flex items-center gap-2 border-b px-4 py-3 md:hidden">
+              <header className="flex items-center gap-2 border-b border-t-2 border-t-bsfs-blue px-4 py-3 md:hidden">
                 <SidebarTrigger />
-                <span className="text-sm font-semibold">BSFS Internal</span>
+                <span className="text-sm font-semibold text-bsfs-blue">BSFS Internal</span>
               </header>
               <main className="flex-1 overflow-auto p-6">
                 <Outlet />

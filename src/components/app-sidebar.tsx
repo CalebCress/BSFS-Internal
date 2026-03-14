@@ -9,6 +9,7 @@ import {
   ChevronRight,
   UserCheck,
   UsersRound,
+  ClipboardCheck,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -54,8 +55,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-4 py-4">
-        <h2 className="text-lg font-semibold">BSFS Internal</h2>
+      <SidebarHeader className="border-b px-4 py-4 border-l-4 border-l-bsfs-blue">
+        <h2 className="text-lg font-semibold text-bsfs-blue">BSFS Internal</h2>
         {profile && (
           <p className="text-xs text-muted-foreground">
             {profile.displayName}
@@ -169,7 +170,7 @@ export function AppSidebar() {
                     <UserCheck className="h-4 w-4" />
                     <span>Member Approvals</span>
                     {(pendingSignUps?.length ?? 0) > 0 && (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-bsfs-red px-1.5 text-[10px] font-semibold text-white">
                         {pendingSignUps!.length}
                       </span>
                     )}
@@ -182,6 +183,15 @@ export function AppSidebar() {
                   >
                     <UsersRound className="h-4 w-4" />
                     <span>Manage Members</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={location.pathname === "/admin/attendance"}
+                    onClick={() => navigate("/admin/attendance")}
+                  >
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span>Attendance</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

@@ -11,6 +11,7 @@
 import type * as applicants from "../applicants.js";
 import type * as applicationForms from "../applicationForms.js";
 import type * as applications from "../applications.js";
+import type * as attendance from "../attendance.js";
 import type * as auth from "../auth.js";
 import type * as calendar from "../calendar.js";
 import type * as events from "../events.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   applicants: typeof applicants;
   applicationForms: typeof applicationForms;
   applications: typeof applications;
+  attendance: typeof attendance;
   auth: typeof auth;
   calendar: typeof calendar;
   events: typeof events;

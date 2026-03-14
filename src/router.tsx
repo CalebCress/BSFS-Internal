@@ -17,6 +17,7 @@ import { PendingApprovalPage } from "./pages/PendingApprovalPage";
 import { RejectedPage } from "./pages/RejectedPage";
 import { MemberApprovalsPage } from "./pages/admin/MemberApprovalsPage";
 import { MemberManagementPage } from "./pages/admin/MemberManagementPage";
+import { AttendancePage } from "./pages/admin/attendance/AttendancePage";
 import { AlumniRegisterPage } from "./pages/AlumniRegisterPage";
 import { AlumniSetupPage } from "./pages/AlumniSetupPage";
 
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
       { path: "stocks/:ticker", element: <StockDetailPage /> },
       { path: "admin/approvals", element: <MemberApprovalsPage /> },
       { path: "admin/members", element: <MemberManagementPage /> },
+      { path: "admin/attendance", element: <AttendancePage /> },
       { path: "alumni", element: <AlumniPage /> },
       { path: "resources", element: <ResourcesPage /> },
     ],

@@ -139,6 +139,22 @@ export default defineSchema({
     .index("by_date", ["date"])
     .index("by_series", ["seriesId"]),
 
+  // Attendance records
+  attendance: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("present"),
+      v.literal("absent"),
+      v.literal("excused")
+    ),
+    recordedBy: v.id("users"),
+    recordedAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_user", ["userId"])
+    .index("by_event_user", ["eventId", "userId"]),
+
   // Uploaded presentation resources
   resources: defineTable({
     title: v.string(),
