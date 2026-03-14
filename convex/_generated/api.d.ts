@@ -18,6 +18,7 @@ import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as interviewSignups from "../interviewSignups.js";
 import type * as interviewSlots from "../interviewSlots.js";
+import type * as lib_permissions from "../lib/permissions.js";
 import type * as massive from "../massive.js";
 import type * as memberTheses from "../memberTheses.js";
 import type * as profiles from "../profiles.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   interviewSignups: typeof interviewSignups;
   interviewSlots: typeof interviewSlots;
+  "lib/permissions": typeof lib_permissions;
   massive: typeof massive;
   memberTheses: typeof memberTheses;
   profiles: typeof profiles;

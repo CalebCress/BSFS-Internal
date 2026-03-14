@@ -32,7 +32,7 @@ interface ApplicantOption {
 
 interface SlotCardProps {
   slot: SlotData;
-  isBoardMember: boolean;
+  hasAdminAccess: boolean;
   currentUserId: string | undefined;
   onSignup: () => void;
   onCancel: () => void;
@@ -56,7 +56,7 @@ const TYPE_STYLES = {
 
 export function SlotCard({
   slot,
-  isBoardMember,
+  hasAdminAccess,
   currentUserId,
   onSignup,
   onCancel,
@@ -87,7 +87,7 @@ export function SlotCard({
             <Badge variant="secondary" className={typeStyle.color}>
               {typeStyle.label}
             </Badge>
-            {isBoardMember && onDelete && (
+            {hasAdminAccess && onDelete && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -151,7 +151,7 @@ export function SlotCard({
         )}
 
         {/* Board member: reassign applicant */}
-        {isBoardMember && onReassign && applicantsForReassign && (
+        {hasAdminAccess && onReassign && applicantsForReassign && (
           <div className="pt-1 border-t">
             <label className="text-xs text-muted-foreground mb-1 block">
               Assign Applicant

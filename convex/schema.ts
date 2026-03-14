@@ -13,6 +13,9 @@ export default defineSchema({
       v.literal("committee_member"),
       v.literal("alumni")
     ),
+    specialRole: v.optional(
+      v.union(v.literal("admin"), v.literal("attendance_tracker"))
+    ),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),

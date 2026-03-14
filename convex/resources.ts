@@ -1,8 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { hasAdminAccess } from "./lib/permissions";
 
-async function requireBoardMember(ctx: { db: any; auth: any }) {
+async function requireAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx as any);
   if (!userId) throw new Error("Not authenticated");
 
@@ -10,8 +11,8 @@ async function requireBoardMember(ctx: { db: any; auth: any }) {
     .query("profiles")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
     .unique();
-  if (!profile || profile.role !== "board_member") {
-    throw new Error("Only board members can manage resources");
+  if (!profile || !hasAdminAccess(profile)) {
+    throw new Error("Only admins can manage resources");
   }
   return userId;
 }
@@ -22,7 +23,7 @@ export const uploadPresentation = mutation({
     fileStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireBoardMember(ctx);
+    const userId = await requireAdmin(ctx);
 
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");

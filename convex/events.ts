@@ -1,8 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { hasAdminAccess } from "./lib/permissions";
 
-async function requireBoardMember(ctx: { db: any; auth: any }) {
+async function requireAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx as any);
   if (!userId) throw new Error("Not authenticated");
 
@@ -10,8 +11,8 @@ async function requireBoardMember(ctx: { db: any; auth: any }) {
     .query("profiles")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
     .unique();
-  if (!profile || profile.role !== "board_member") {
-    throw new Error("Only board members can manage events");
+  if (!profile || !hasAdminAccess(profile)) {
+    throw new Error("Only admins can manage events");
   }
   return userId;
 }
@@ -30,7 +31,7 @@ export const create = mutation({
     mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await requireBoardMember(ctx);
+    const userId = await requireAdmin(ctx);
 
     // Auto-set mandatory attendance for Corporate & Market Updates
     const mandatory = args.isCorporateMarketUpdate ? true : args.mandatoryAttendance;
@@ -68,7 +69,7 @@ export const createRecurring = mutation({
     mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await requireBoardMember(ctx);
+    const userId = await requireAdmin(ctx);
 
     if (args.dayOfWeek < 0 || args.dayOfWeek > 6) {
       throw new Error("dayOfWeek must be 0 (Sunday) through 6 (Saturday)");
@@ -186,7 +187,7 @@ export const update = mutation({
     mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireBoardMember(ctx);
+    await requireAdmin(ctx);
 
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
@@ -224,7 +225,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    await requireBoardMember(ctx);
+    await requireAdmin(ctx);
 
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
@@ -246,7 +247,7 @@ export const remove = mutation({
 export const removeSeries = mutation({
   args: { seriesId: v.string() },
   handler: async (ctx, args) => {
-    await requireBoardMember(ctx);
+    await requireAdmin(ctx);
 
     const events = await ctx.db
       .query("events")

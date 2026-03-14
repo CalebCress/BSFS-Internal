@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { hasAdminAccess } from "./lib/permissions";
 
 // Upsert: ensure a stock record exists for the given ticker, return its _id
 export const getOrCreateByTicker = mutation({
@@ -222,8 +223,8 @@ export const remove = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") {
-      throw new Error("Only board members can delete stocks");
+    if (!profile || !hasAdminAccess(profile)) {
+      throw new Error("Only admins can delete stocks");
     }
 
     // Cascade delete theses

@@ -1,8 +1,9 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { hasAttendanceAccess } from "./lib/permissions";
 
-async function requireBoardMember(ctx: { db: any; auth: any }) {
+async function requireAttendanceAccess(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx as any);
   if (!userId) throw new Error("Not authenticated");
 
@@ -10,8 +11,8 @@ async function requireBoardMember(ctx: { db: any; auth: any }) {
     .query("profiles")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
     .unique();
-  if (!profile || profile.role !== "board_member") {
-    throw new Error("Only board members can manage attendance");
+  if (!profile || !hasAttendanceAccess(profile)) {
+    throw new Error("You do not have access to manage attendance");
   }
   return userId;
 }
@@ -28,7 +29,7 @@ export const record = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const recordedBy = await requireBoardMember(ctx);
+    const recordedBy = await requireAttendanceAccess(ctx);
 
     // Verify event exists
     const event = await ctx.db.get(args.eventId);
@@ -76,7 +77,7 @@ export const recordBatch = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const recordedBy = await requireBoardMember(ctx);
+    const recordedBy = await requireAttendanceAccess(ctx);
 
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
@@ -120,7 +121,7 @@ export const getByEvent = query({
       .query("profiles")
       .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") return [];
+    if (!profile || !hasAttendanceAccess(profile)) return [];
 
     const records = await ctx.db
       .query("attendance")
@@ -159,7 +160,7 @@ export const listAttendanceEvents = query({
       .query("profiles")
       .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") return [];
+    if (!profile || !hasAttendanceAccess(profile)) return [];
 
     let events = await ctx.db.query("events").collect();
 
@@ -206,7 +207,7 @@ export const getMemberStats = query({
       .query("profiles")
       .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") return [];
+    if (!profile || !hasAttendanceAccess(profile)) return [];
 
     // Get all approved non-alumni members
     const allProfiles = await ctx.db.query("profiles").collect();

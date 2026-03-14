@@ -22,7 +22,7 @@ import { toast } from "sonner";
 type SlotType = "telephone" | "assessment_center";
 
 export function InterviewsPage() {
-  const { profile, isBoardMember } = useCurrentProfile();
+  const { profile, hasAdminAccess } = useCurrentProfile();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | SlotType>("all");
 
@@ -157,7 +157,7 @@ export function InterviewsPage() {
               : "Loading..."}
           </p>
         </div>
-        {isBoardMember && (
+        {hasAdminAccess && (
           <Button onClick={() => setBatchDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Create Slots
@@ -217,7 +217,7 @@ export function InterviewsPage() {
               <Calendar className="mx-auto mb-3 h-8 w-8 opacity-40" />
               <p className="font-medium">No interview slots</p>
               <p className="text-sm">
-                {isBoardMember
+                {hasAdminAccess
                   ? 'Click "Create Slots" to schedule interviews.'
                   : "No interview slots have been created yet."}
               </p>
@@ -231,7 +231,7 @@ export function InterviewsPage() {
                     <SlotCard
                       key={slot._id}
                       slot={slot}
-                      isBoardMember={isBoardMember}
+                      hasAdminAccess={hasAdminAccess}
                       currentUserId={currentUserId}
                       onSignup={() => void handleSignup(slot._id)}
                       onCancel={() => void handleCancel(slot._id)}

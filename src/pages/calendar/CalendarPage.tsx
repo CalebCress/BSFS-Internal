@@ -57,7 +57,7 @@ interface EventData {
 }
 
 export function CalendarPage() {
-  const { isBoardMember } = useCurrentProfile();
+  const { hasAdminAccess } = useCurrentProfile();
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
@@ -248,7 +248,7 @@ export function CalendarPage() {
             Events and interview schedule
           </p>
         </div>
-        {isBoardMember && (
+        {hasAdminAccess && (
           <Button onClick={handleAddEvent}>
             <Plus className="mr-2 h-4 w-4" />
             Add Event
@@ -409,7 +409,7 @@ export function CalendarPage() {
                             Series
                           </Badge>
                         )}
-                        {isBoardMember && (
+                        {hasAdminAccess && (
                           <>
                             <Button
                               variant="ghost"
@@ -490,12 +490,12 @@ export function CalendarPage() {
                             "Unassigned"
                           )}
                         </div>
-                        {isBoardMember && (
+                        {hasAdminAccess && (
                           <PresentationUpload eventId={event._id} />
                         )}
                       </div>
                     )}
-                    {isBoardMember && event.seriesId && (
+                    {hasAdminAccess && event.seriesId && (
                       <Button
                         variant="outline"
                         size="sm"

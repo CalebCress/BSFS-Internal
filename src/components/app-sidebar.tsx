@@ -43,7 +43,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuthActions();
-  const { profile, isBoardMember, isAlumni } = useCurrentProfile();
+  const { profile, isBoardMember, hasAdminAccess, canRecordAttendance, isAlumni } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
 
   const isInStocks = location.pathname.startsWith("/stocks");
@@ -156,44 +156,50 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {/* Admin Section (board members only) */}
-        {isBoardMember && (
+        {/* Admin Section */}
+        {(hasAdminAccess || canRecordAttendance) && (
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === "/admin/approvals"}
-                    onClick={() => navigate("/admin/approvals")}
-                  >
-                    <UserCheck className="h-4 w-4" />
-                    <span>Member Approvals</span>
-                    {(pendingSignUps?.length ?? 0) > 0 && (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-bsfs-red px-1.5 text-[10px] font-semibold text-white">
-                        {pendingSignUps!.length}
-                      </span>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === "/admin/members"}
-                    onClick={() => navigate("/admin/members")}
-                  >
-                    <UsersRound className="h-4 w-4" />
-                    <span>Manage Members</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === "/admin/attendance"}
-                    onClick={() => navigate("/admin/attendance")}
-                  >
-                    <ClipboardCheck className="h-4 w-4" />
-                    <span>Attendance</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {hasAdminAccess && (
+                  <>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={location.pathname === "/admin/approvals"}
+                        onClick={() => navigate("/admin/approvals")}
+                      >
+                        <UserCheck className="h-4 w-4" />
+                        <span>Member Approvals</span>
+                        {(pendingSignUps?.length ?? 0) > 0 && (
+                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-bsfs-red px-1.5 text-[10px] font-semibold text-white">
+                            {pendingSignUps!.length}
+                          </span>
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={location.pathname === "/admin/members"}
+                        onClick={() => navigate("/admin/members")}
+                      >
+                        <UsersRound className="h-4 w-4" />
+                        <span>Manage Members</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </>
+                )}
+                {canRecordAttendance && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={location.pathname === "/admin/attendance"}
+                      onClick={() => navigate("/admin/attendance")}
+                    >
+                      <ClipboardCheck className="h-4 w-4" />
+                      <span>Attendance</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

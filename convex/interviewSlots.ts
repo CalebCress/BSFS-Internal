@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { hasAdminAccess } from "./lib/permissions";
 
 /** Convert "HH:MM" to total minutes for arithmetic */
 function toMinutes(time: string): number {
@@ -40,7 +41,7 @@ export const batchCreate = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") {
+    if (!profile || !hasAdminAccess(profile)) {
       throw new Error("Only board members can create interview slots");
     }
 
@@ -195,7 +196,7 @@ export const update = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") {
+    if (!profile || !hasAdminAccess(profile)) {
       throw new Error("Only board members can reassign applicants");
     }
 
@@ -217,7 +218,7 @@ export const remove = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.role !== "board_member") {
+    if (!profile || !hasAdminAccess(profile)) {
       throw new Error("Only board members can delete slots");
     }
 

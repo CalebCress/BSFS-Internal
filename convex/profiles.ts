@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { hasAdminAccess } from "./lib/permissions";
 
 export const getMyProfile = query({
   args: {},
@@ -236,8 +237,8 @@ export const approveMember = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!callerProfile || callerProfile.role !== "board_member") {
-      throw new Error("Only board members can approve members");
+    if (!callerProfile || !hasAdminAccess(callerProfile)) {
+      throw new Error("Only admins can approve members");
     }
 
     const target = await ctx.db.get(args.profileId);
@@ -261,8 +262,8 @@ export const rejectMember = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!callerProfile || callerProfile.role !== "board_member") {
-      throw new Error("Only board members can reject members");
+    if (!callerProfile || !hasAdminAccess(callerProfile)) {
+      throw new Error("Only admins can reject members");
     }
 
     const target = await ctx.db.get(args.profileId);
@@ -286,7 +287,7 @@ export const listPendingSignUps = query({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!callerProfile || callerProfile.role !== "board_member") return [];
+    if (!callerProfile || !hasAdminAccess(callerProfile)) return [];
 
     const pending = await ctx.db
       .query("profiles")
@@ -320,8 +321,8 @@ export const removeMember = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!callerProfile || callerProfile.role !== "board_member") {
-      throw new Error("Only board members can remove members");
+    if (!callerProfile || !hasAdminAccess(callerProfile)) {
+      throw new Error("Only admins can remove members");
     }
 
     const target = await ctx.db.get(args.profileId);
@@ -366,7 +367,7 @@ export const listAllMembers = query({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!callerProfile || callerProfile.role !== "board_member") return [];
+    if (!callerProfile || !hasAdminAccess(callerProfile)) return [];
 
     const profiles = await ctx.db.query("profiles").collect();
     return Promise.all(
@@ -408,6 +409,35 @@ export const updateRole = mutation({
     }
 
     await ctx.db.patch(args.profileId, { role: args.role });
+  },
+});
+
+export const updateSpecialRole = mutation({
+  args: {
+    profileId: v.id("profiles"),
+    specialRole: v.union(
+      v.literal("admin"),
+      v.literal("attendance_tracker"),
+      v.literal("none")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const callerProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    // Only actual board members can assign special roles (prevents privilege escalation)
+    if (!callerProfile || callerProfile.role !== "board_member") {
+      throw new Error("Only board members can assign special roles");
+    }
+
+    await ctx.db.patch(args.profileId, {
+      specialRole: args.specialRole === "none" ? undefined : args.specialRole,
+    });
   },
 });
 

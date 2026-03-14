@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Search, Trash2, Mail } from "lucide-react";
-import { ROLES, MEMBER_STATUSES, type MemberStatus } from "@/lib/constants";
+import { ROLES, MEMBER_STATUSES, SPECIAL_ROLES, type MemberStatus } from "@/lib/constants";
 import { toast } from "sonner";
 
 function getInitials(name: string): string {
@@ -41,9 +41,10 @@ function getInitials(name: string): string {
 }
 
 export function MemberManagementPage() {
-  const { profile: myProfile } = useCurrentProfile();
+  const { profile: myProfile, isBoardMember } = useCurrentProfile();
   const allMembers = useQuery(api.profiles.listAllMembers);
   const updateRole = useMutation(api.profiles.updateRole);
+  const updateSpecialRole = useMutation(api.profiles.updateSpecialRole);
   const removeMember = useMutation(api.profiles.removeMember);
 
   const [search, setSearch] = useState("");
@@ -78,6 +79,25 @@ export function MemberManagementPage() {
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to update role"
+      );
+    }
+  };
+
+  const handleSpecialRoleChange = async (
+    profileId: Id<"profiles">,
+    specialRole: "admin" | "attendance_tracker" | "none",
+    name: string
+  ) => {
+    try {
+      await updateSpecialRole({ profileId, specialRole });
+      const label =
+        specialRole === "none"
+          ? "None"
+          : SPECIAL_ROLES[specialRole].label;
+      toast.success(`${name}'s special access set to ${label}`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update special role"
       );
     }
   };
@@ -155,10 +175,11 @@ export function MemberManagementPage() {
         </div>
       ) : (
         <div className="rounded-lg border">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className={`grid ${isBoardMember ? "grid-cols-[1fr_140px_180px_180px_60px]" : "grid-cols-[1fr_140px_180px_60px]"} items-center gap-4 border-b px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider`}>
             <span>Member</span>
             <span>Status</span>
             <span>Role</span>
+            {isBoardMember && <span>Special Access</span>}
             <span className="text-right">Actions</span>
           </div>
           {filtered.map((member) => {
@@ -167,7 +188,7 @@ export function MemberManagementPage() {
             return (
               <div
                 key={member._id}
-                className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b last:border-b-0 px-4 py-3"
+                className={`grid ${isBoardMember ? "grid-cols-[1fr_140px_180px_180px_60px]" : "grid-cols-[1fr_140px_180px_60px]"} items-center gap-4 border-b last:border-b-0 px-4 py-3`}
               >
                 {/* Member info */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -240,6 +261,38 @@ export function MemberManagementPage() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Special role selector (board members only) */}
+                {isBoardMember && (
+                  <Select
+                    value={(member as any).specialRole ?? "none"}
+                    onValueChange={(val) =>
+                      void handleSpecialRoleChange(
+                        member._id,
+                        val as "admin" | "attendance_tracker" | "none",
+                        member.displayName
+                      )
+                    }
+                    disabled={
+                      isMe ||
+                      member.role === "board_member" ||
+                      member.role === "alumni"
+                    }
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="admin">
+                        {SPECIAL_ROLES.admin.label}
+                      </SelectItem>
+                      <SelectItem value="attendance_tracker">
+                        {SPECIAL_ROLES.attendance_tracker.label}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
 
                 {/* Remove button */}
                 <div className="text-right">
