@@ -41,7 +41,7 @@ function getInitials(name: string): string {
 }
 
 export function MemberManagementPage() {
-  const { profile: myProfile, isBoardMember } = useCurrentProfile();
+  const { profile: myProfile, hasAdminAccess } = useCurrentProfile();
   const allMembers = useQuery(api.profiles.listAllMembers);
   const updateRole = useMutation(api.profiles.updateRole);
   const updateSpecialRole = useMutation(api.profiles.updateSpecialRole);
@@ -175,11 +175,11 @@ export function MemberManagementPage() {
         </div>
       ) : (
         <div className="rounded-lg border">
-          <div className={`grid ${isBoardMember ? "grid-cols-[1fr_140px_180px_180px_60px]" : "grid-cols-[1fr_140px_180px_60px]"} items-center gap-4 border-b px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider`}>
+          <div className={`grid ${hasAdminAccess ? "grid-cols-[1fr_140px_180px_180px_60px]" : "grid-cols-[1fr_140px_180px_60px]"} items-center gap-4 border-b px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider`}>
             <span>Member</span>
             <span>Status</span>
             <span>Role</span>
-            {isBoardMember && <span>Special Access</span>}
+            {hasAdminAccess && <span>Special Access</span>}
             <span className="text-right">Actions</span>
           </div>
           {filtered.map((member) => {
@@ -188,7 +188,7 @@ export function MemberManagementPage() {
             return (
               <div
                 key={member._id}
-                className={`grid ${isBoardMember ? "grid-cols-[1fr_140px_180px_180px_60px]" : "grid-cols-[1fr_140px_180px_60px]"} items-center gap-4 border-b last:border-b-0 px-4 py-3`}
+                className={`grid ${hasAdminAccess ? "grid-cols-[1fr_140px_180px_180px_60px]" : "grid-cols-[1fr_140px_180px_60px]"} items-center gap-4 border-b last:border-b-0 px-4 py-3`}
               >
                 {/* Member info */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -263,7 +263,7 @@ export function MemberManagementPage() {
                 </Select>
 
                 {/* Special role selector (board members only) */}
-                {isBoardMember && (
+                {hasAdminAccess && (
                   <Select
                     value={(member as any).specialRole ?? "none"}
                     onValueChange={(val) =>

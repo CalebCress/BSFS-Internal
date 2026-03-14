@@ -430,9 +430,8 @@ export const updateSpecialRole = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    // Only actual board members can assign special roles (prevents privilege escalation)
-    if (!callerProfile || callerProfile.role !== "board_member") {
-      throw new Error("Only board members can assign special roles");
+    if (!callerProfile || !hasAdminAccess(callerProfile)) {
+      throw new Error("Only admins can assign special roles");
     }
 
     await ctx.db.patch(args.profileId, {
