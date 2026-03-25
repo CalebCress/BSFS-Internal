@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +107,7 @@ export function RecordAttendanceTab() {
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{event.date}</span>
+                  <span>{formatDate(event.date)}</span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {event.startTime}–{event.endTime}
