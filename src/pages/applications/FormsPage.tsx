@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { type Id } from "../../../convex/_generated/dataModel";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -208,7 +209,7 @@ export function FormsPage() {
                     {form.applicantCount}
                   </TableCell>
                   <TableCell>
-                    {new Date(form.createdAt).toLocaleDateString()}
+                    {formatDate(form.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

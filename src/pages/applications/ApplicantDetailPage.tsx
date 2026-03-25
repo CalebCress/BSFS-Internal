@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { type Id } from "../../../convex/_generated/dataModel";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -156,7 +157,7 @@ export function ApplicantDetailPage() {
             {applicant.firstName} {applicant.lastName}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Applied {new Date(applicant.appliedAt).toLocaleDateString()}{" "}
+            Applied {formatDate(applicant.appliedAt)}{" "}
             &middot; {applicant.formTitle}
           </p>
         </div>
@@ -295,7 +296,7 @@ export function ApplicantDetailPage() {
                             {review.reviewerName}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {new Date(review.createdAt).toLocaleDateString()}
+                            {formatDate(review.createdAt)}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-1">
@@ -369,11 +370,7 @@ export function ApplicantDetailPage() {
               <div className="flex items-center gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
-                  {new Date(applicant.appliedAt).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {formatDate(applicant.appliedAt)}
                 </span>
               </div>
               <Separator />

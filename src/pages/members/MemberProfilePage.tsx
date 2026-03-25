@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -244,7 +245,7 @@ export function MemberProfilePage() {
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0">
-                      {new Date(thesis.updatedAt).toLocaleDateString()}
+                      {formatDate(thesis.updatedAt)}
                     </span>
                   </div>
                   <p className="text-sm whitespace-pre-wrap line-clamp-3">

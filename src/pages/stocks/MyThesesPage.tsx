@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { RatingBadge } from "./components/RatingBadge";
@@ -82,7 +83,7 @@ export function MyThesesPage() {
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {new Date(item.updatedAt).toLocaleDateString()}
+                      {formatDate(item.updatedAt)}
                     </p>
                   </div>
                 </div>

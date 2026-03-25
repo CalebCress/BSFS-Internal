@@ -404,8 +404,8 @@ export const updateRole = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!callerProfile || callerProfile.role !== "board_member") {
-      throw new Error("Only board members can update roles");
+    if (!callerProfile || !hasAdminAccess(callerProfile)) {
+      throw new Error("Only board members and admins can update roles");
     }
 
     await ctx.db.patch(args.profileId, { role: args.role });

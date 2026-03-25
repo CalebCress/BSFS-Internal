@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 import {
   AreaChart,
   Area,
@@ -29,7 +30,7 @@ const PERIODS = [
   { label: "1Y", months: 12 },
 ] as const;
 
-function formatDate(timestamp: number): string {
+function formatAxisDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -93,7 +94,7 @@ export function PriceChart({ ticker }: { ticker: string }) {
   }
 
   const chartData = bars.map((b) => ({
-    date: formatDate(b.t),
+    date: formatAxisDate(b.t),
     close: b.c,
     open: b.o,
     high: b.h,
@@ -150,7 +151,7 @@ export function PriceChart({ ticker }: { ticker: string }) {
               return (
                 <div className="rounded-lg border bg-popover p-3 text-sm shadow-md">
                   <p className="font-medium mb-1">
-                    {new Date(d.timestamp).toLocaleDateString()}
+                    {formatDate(d.timestamp)}
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
                     <span className="text-muted-foreground">Open</span>

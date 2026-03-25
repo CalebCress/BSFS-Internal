@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RatingBadge } from "./components/RatingBadge";
@@ -165,9 +166,7 @@ export function StocksPage() {
                     <td className="px-4 py-3">{stock.thesisCount}</td>
                     <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
                       {stock.latestThesisAt
-                        ? new Date(
-                            stock.latestThesisAt
-                          ).toLocaleDateString()
+                        ? formatDate(stock.latestThesisAt)
                         : "—"}
                     </td>
                   </tr>

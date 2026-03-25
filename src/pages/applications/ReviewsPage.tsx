@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,7 +82,7 @@ export function ReviewsPage() {
                     <div className="flex items-center gap-3">
                       <StageBadge stage={applicant.stage} />
                       <span className="hidden text-xs text-muted-foreground sm:inline">
-                        {new Date(applicant.appliedAt).toLocaleDateString()}
+                        {formatDate(applicant.appliedAt)}
                       </span>
                       <Button
                         size="sm"

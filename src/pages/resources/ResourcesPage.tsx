@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
+import { formatDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, ExternalLink } from "lucide-react";
@@ -9,13 +10,6 @@ export function ResourcesPage() {
   const resources = useQuery(api.resources.list);
   const navigate = useNavigate();
 
-  const formatEventDate = (dateStr: string) => {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
 
   return (
     <div className="space-y-6">
@@ -52,7 +46,7 @@ export function ResourcesPage() {
                     </p>
                     {resource.eventDate && (
                       <p className="text-xs text-muted-foreground">
-                        {formatEventDate(resource.eventDate)}
+                        {formatDate(resource.eventDate)}
                       </p>
                     )}
                   </div>

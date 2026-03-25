@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RatingBadge } from "./components/RatingBadge";
@@ -281,7 +282,7 @@ export function StockDetailPage() {
                           </>
                         )}
                         <span className="text-xs text-muted-foreground">
-                          {new Date(thesis.updatedAt).toLocaleDateString()}
+                          {formatDate(thesis.updatedAt)}
                         </span>
                       </div>
                     </div>

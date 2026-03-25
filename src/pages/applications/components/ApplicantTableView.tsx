@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { formatDate } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -141,7 +142,7 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
                   <StageBadge stage={applicant.stage} />
                 </TableCell>
                 <TableCell>
-                  {new Date(applicant.appliedAt).toLocaleDateString()}
+                  {formatDate(applicant.appliedAt)}
                 </TableCell>
                 <TableCell>
                   {applicant.averageOverall != null ? (
