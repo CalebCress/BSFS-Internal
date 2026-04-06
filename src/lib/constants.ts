@@ -19,6 +19,7 @@ export type Role = keyof typeof ROLES;
 export const SPECIAL_ROLES = {
   admin: { label: "Admin" },
   attendance_tracker: { label: "Attendance Tracker" },
+  cv_reviewer: { label: "CV Reviewer" },
 } as const;
 
 export type SpecialRole = keyof typeof SPECIAL_ROLES;

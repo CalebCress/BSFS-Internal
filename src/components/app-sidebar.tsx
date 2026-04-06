@@ -5,6 +5,7 @@ import {
   Users,
   GraduationCap,
   BookOpen,
+  Briefcase,
   LogOut,
   ChevronRight,
   UserCheck,
@@ -39,19 +40,42 @@ const stockSubItems = [
   { title: "My Theses", path: "/stocks/my-theses" },
 ];
 
+const careerSubItems = [
+  { title: "CV Review", path: "/careers/cv-review" },
+  { title: "Reviews To Do", path: "/careers/review-queue", cvReviewerOnly: true },
+];
+
+const resourceSubItems = [
+  { title: "Market & Corporate", path: "/resources/market-corporate" },
+  { title: "Workshops", path: "/resources/workshops" },
+  { title: "Interview Prep", path: "/resources/interview-prep" },
+];
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuthActions();
-  const { profile, hasAdminAccess, canRecordAttendance, isAlumni } = useCurrentProfile();
+  const { profile, hasAdminAccess, canRecordAttendance, isCvReviewer, isAlumni } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
 
   const isInStocks = location.pathname.startsWith("/stocks");
+  const isInResources = location.pathname.startsWith("/resources");
+  const isInCareers = location.pathname.startsWith("/careers");
   const [stocksOpen, setStocksOpen] = useState(isInStocks);
+  const [resourcesOpen, setResourcesOpen] = useState(isInResources);
+  const [careersOpen, setCareersOpen] = useState(isInCareers);
 
   useEffect(() => {
     if (isInStocks) setStocksOpen(true);
   }, [isInStocks]);
+
+  useEffect(() => {
+    if (isInResources) setResourcesOpen(true);
+  }, [isInResources]);
+
+  useEffect(() => {
+    if (isInCareers) setCareersOpen(true);
+  }, [isInCareers]);
 
   return (
     <Sidebar>
@@ -145,12 +169,65 @@ export function AppSidebar() {
               {!isAlumni && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    isActive={location.pathname.startsWith("/resources")}
-                    onClick={() => navigate("/resources")}
+                    isActive={isInResources}
+                    onClick={() => setResourcesOpen(!resourcesOpen)}
                   >
                     <BookOpen className="h-4 w-4" />
                     <span>Resources</span>
+                    <ChevronRight
+                      className={`ml-auto h-4 w-4 transition-transform ${
+                        resourcesOpen ? "rotate-90" : ""
+                      }`}
+                    />
                   </SidebarMenuButton>
+                  {resourcesOpen && (
+                    <SidebarMenuSub>
+                      {resourceSubItems.map((item) => (
+                        <SidebarMenuSubItem key={item.path}>
+                          <SidebarMenuSubButton
+                            isActive={location.pathname === item.path}
+                            onClick={() => navigate(item.path)}
+                          >
+                            <span>{item.title}</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
+
+              {/* Careers (hidden from alumni) */}
+              {!isAlumni && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isInCareers}
+                    onClick={() => setCareersOpen(!careersOpen)}
+                  >
+                    <Briefcase className="h-4 w-4" />
+                    <span>Careers</span>
+                    <ChevronRight
+                      className={`ml-auto h-4 w-4 transition-transform ${
+                        careersOpen ? "rotate-90" : ""
+                      }`}
+                    />
+                  </SidebarMenuButton>
+                  {careersOpen && (
+                    <SidebarMenuSub>
+                      {careerSubItems
+                        .filter((item) => !item.cvReviewerOnly || isCvReviewer)
+                        .map((item) => (
+                          <SidebarMenuSubItem key={item.path}>
+                            <SidebarMenuSubButton
+                              isActive={location.pathname === item.path}
+                              onClick={() => navigate(item.path)}
+                            >
+                              <span>{item.title}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                    </SidebarMenuSub>
+                  )}
                 </SidebarMenuItem>
               )}
             </SidebarMenu>

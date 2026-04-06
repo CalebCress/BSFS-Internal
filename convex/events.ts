@@ -26,6 +26,11 @@ export const create = mutation({
     endTime: v.string(),
     location: v.optional(v.string()),
     isCorporateMarketUpdate: v.optional(v.boolean()),
+    eventType: v.optional(v.union(
+      v.literal("corporate_market_update"),
+      v.literal("workshop"),
+      v.literal("other"),
+    )),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
     mandatoryAttendance: v.optional(v.boolean()),
@@ -33,8 +38,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireAdmin(ctx);
 
+    const isCMU = args.eventType === "corporate_market_update" || args.isCorporateMarketUpdate;
     // Auto-set mandatory attendance for Corporate & Market Updates
-    const mandatory = args.isCorporateMarketUpdate ? true : args.mandatoryAttendance;
+    const mandatory = isCMU ? true : args.mandatoryAttendance;
 
     return await ctx.db.insert("events", {
       title: args.title,
@@ -44,11 +50,12 @@ export const create = mutation({
       endTime: args.endTime,
       location: args.location,
       createdBy: userId,
-      isCorporateMarketUpdate: args.isCorporateMarketUpdate,
-      corporateAssignee: args.isCorporateMarketUpdate
+      isCorporateMarketUpdate: isCMU || undefined,
+      eventType: args.eventType,
+      corporateAssignee: isCMU
         ? args.corporateAssignee
         : undefined,
-      marketAssignee: args.isCorporateMarketUpdate
+      marketAssignee: isCMU
         ? args.marketAssignee
         : undefined,
       mandatoryAttendance: mandatory,
@@ -66,6 +73,11 @@ export const createRecurring = mutation({
     startDate: v.string(),
     weeksCount: v.optional(v.number()),
     isCorporateMarketUpdate: v.optional(v.boolean()),
+    eventType: v.optional(v.union(
+      v.literal("corporate_market_update"),
+      v.literal("workshop"),
+      v.literal("other"),
+    )),
     mandatoryAttendance: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -89,8 +101,9 @@ export const createRecurring = mutation({
     if (daysUntil < 0) daysUntil += 7;
     start.setDate(start.getDate() + daysUntil);
 
+    const isCMU = args.eventType === "corporate_market_update" || args.isCorporateMarketUpdate;
     // Auto-set mandatory attendance for Corporate & Market Updates
-    const mandatory = args.isCorporateMarketUpdate ? true : args.mandatoryAttendance;
+    const mandatory = isCMU ? true : args.mandatoryAttendance;
 
     let eventsCreated = 0;
     for (let i = 0; i < weeks; i++) {
@@ -106,7 +119,8 @@ export const createRecurring = mutation({
         endTime: args.endTime,
         seriesId,
         createdBy: userId,
-        isCorporateMarketUpdate: args.isCorporateMarketUpdate,
+        isCorporateMarketUpdate: isCMU || undefined,
+        eventType: args.eventType,
         mandatoryAttendance: mandatory,
         // corporateAssignee and marketAssignee intentionally omitted
         // so each occurrence gets independent assignments
@@ -161,7 +175,11 @@ export const list = query({
           marketAssigneeName = profile?.displayName ?? null;
         }
 
-        return { ...event, corporateAssigneeName, marketAssigneeName };
+        // Derive eventType for backward compat with old data
+        const eventType = event.eventType
+          ?? (event.isCorporateMarketUpdate ? "corporate_market_update" as const : undefined);
+
+        return { ...event, corporateAssigneeName, marketAssigneeName, eventType };
       })
     );
 
@@ -182,6 +200,11 @@ export const update = mutation({
     endTime: v.optional(v.string()),
     location: v.optional(v.string()),
     isCorporateMarketUpdate: v.optional(v.boolean()),
+    eventType: v.optional(v.union(
+      v.literal("corporate_market_update"),
+      v.literal("workshop"),
+      v.literal("other"),
+    )),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
     mandatoryAttendance: v.optional(v.boolean()),
@@ -200,13 +223,22 @@ export const update = mutation({
     if (args.endTime !== undefined) updates.endTime = args.endTime;
     if (args.location !== undefined) updates.location = args.location;
 
-    if (args.isCorporateMarketUpdate !== undefined) {
-      updates.isCorporateMarketUpdate = args.isCorporateMarketUpdate;
-      if (args.isCorporateMarketUpdate) {
-        // Auto-set mandatory attendance for C&M Updates
+    if (args.eventType !== undefined) {
+      updates.eventType = args.eventType;
+      const isCMU = args.eventType === "corporate_market_update";
+      updates.isCorporateMarketUpdate = isCMU || undefined;
+      if (isCMU) {
         updates.mandatoryAttendance = true;
       } else {
-        // Clear assignees when toggling off
+        // Clear assignees when not C&M Update
+        updates.corporateAssignee = undefined;
+        updates.marketAssignee = undefined;
+      }
+    } else if (args.isCorporateMarketUpdate !== undefined) {
+      updates.isCorporateMarketUpdate = args.isCorporateMarketUpdate;
+      if (args.isCorporateMarketUpdate) {
+        updates.mandatoryAttendance = true;
+      } else {
         updates.corporateAssignee = undefined;
         updates.marketAssignee = undefined;
       }

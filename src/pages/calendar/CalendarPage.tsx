@@ -49,6 +49,7 @@ interface EventData {
   seriesId?: string;
   createdBy: Id<"users">;
   isCorporateMarketUpdate?: boolean;
+  eventType?: "corporate_market_update" | "workshop" | "other";
   corporateAssignee?: Id<"users">;
   marketAssignee?: Id<"users">;
   corporateAssigneeName?: string | null;
@@ -334,9 +335,11 @@ export function CalendarPage() {
                         <div
                           key={event._id}
                           className={`truncate rounded px-1 py-0.5 text-[10px] font-medium ${
-                            event.isCorporateMarketUpdate
+                            event.eventType === "corporate_market_update" || event.isCorporateMarketUpdate
                               ? "bg-green-100 text-green-800"
-                              : "bg-blue-100 text-blue-800"
+                              : event.eventType === "workshop"
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-blue-100 text-blue-800"
                           }`}
                         >
                           {event.title}
@@ -450,13 +453,13 @@ export function CalendarPage() {
                       </p>
                     )}
                     {/* Corporate & Market Update details */}
-                    {event.isCorporateMarketUpdate && (
+                    {(event.eventType === "corporate_market_update" || event.isCorporateMarketUpdate) && (
                       <div className="space-y-1.5 border-t pt-2">
                         <Badge
                           variant="secondary"
                           className="bg-green-50 text-green-700 text-[10px]"
                         >
-                          Corporate & Market Update
+                          Market & Corporate Update
                         </Badge>
                         <div className="text-sm text-muted-foreground">
                           <span className="font-medium">Corporate:</span>{" "}
@@ -490,6 +493,20 @@ export function CalendarPage() {
                             "Unassigned"
                           )}
                         </div>
+                        {hasAdminAccess && (
+                          <PresentationUpload eventId={event._id} />
+                        )}
+                      </div>
+                    )}
+                    {/* Workshop details */}
+                    {event.eventType === "workshop" && (
+                      <div className="space-y-1.5 border-t pt-2">
+                        <Badge
+                          variant="secondary"
+                          className="bg-orange-50 text-orange-700 text-[10px]"
+                        >
+                          Workshop
+                        </Badge>
                         {hasAdminAccess && (
                           <PresentationUpload eventId={event._id} />
                         )}

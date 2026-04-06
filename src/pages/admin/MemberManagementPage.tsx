@@ -269,7 +269,7 @@ export function MemberManagementPage() {
                     onValueChange={(val) =>
                       void handleSpecialRoleChange(
                         member._id,
-                        val as "admin" | "attendance_tracker" | "none",
+                        val as "admin" | "attendance_tracker" | "cv_reviewer" | "none",
                         member.displayName
                       )
                     }
@@ -289,6 +289,9 @@ export function MemberManagementPage() {
                       </SelectItem>
                       <SelectItem value="attendance_tracker">
                         {SPECIAL_ROLES.attendance_tracker.label}
+                      </SelectItem>
+                      <SelectItem value="cv_reviewer">
+                        {SPECIAL_ROLES.cv_reviewer.label}
                       </SelectItem>
                     </SelectContent>
                   </Select>

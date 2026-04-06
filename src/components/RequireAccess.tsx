@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 
 interface RequireAccessProps {
-  check: "admin" | "attendance" | "member";
+  check: "admin" | "attendance" | "member" | "cv_reviewer";
   children: React.ReactNode;
 }
 
@@ -11,7 +11,7 @@ interface RequireAccessProps {
  * lacks the required access level. Shows nothing while loading.
  */
 export function RequireAccess({ check, children }: RequireAccessProps) {
-  const { hasAdminAccess, canRecordAttendance, isAlumni, isLoading } =
+  const { hasAdminAccess, canRecordAttendance, isCvReviewer, isAlumni, isLoading } =
     useCurrentProfile();
 
   if (isLoading) return null;
@@ -23,6 +23,9 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
       break;
     case "attendance":
       allowed = canRecordAttendance;
+      break;
+    case "cv_reviewer":
+      allowed = !!isCvReviewer;
       break;
     case "member":
       // "member" means non-alumni (committee_member or board_member)

@@ -27,9 +27,17 @@ export const uploadPresentation = mutation({
 
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
-    if (!event.isCorporateMarketUpdate) {
-      throw new Error("This event is not a Corporate & Market Update");
+
+    const eventType = event.eventType
+      ?? (event.isCorporateMarketUpdate ? "corporate_market_update" : undefined);
+
+    if (eventType !== "corporate_market_update" && eventType !== "workshop") {
+      throw new Error("Uploads are only supported for Market & Corporate Update and Workshop events");
     }
+
+    const category = eventType === "corporate_market_update"
+      ? "market_corporate" as const
+      : "workshop" as const;
 
     // Check if a resource already exists for this event
     const existing = await ctx.db
@@ -44,11 +52,14 @@ export const uploadPresentation = mutation({
         fileStorageId: args.fileStorageId,
         uploadedBy: userId,
         uploadedAt: Date.now(),
+        category,
       });
       return existing._id;
     }
 
-    const title = "Corporate Market Update";
+    const title = eventType === "corporate_market_update"
+      ? "Corporate Market Update"
+      : event.title;
 
     return await ctx.db.insert("resources", {
       title,
@@ -56,7 +67,39 @@ export const uploadPresentation = mutation({
       fileStorageId: args.fileStorageId,
       uploadedBy: userId,
       uploadedAt: Date.now(),
+      category,
     });
+  },
+});
+
+export const uploadInterviewPrep = mutation({
+  args: {
+    title: v.string(),
+    fileStorageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAdmin(ctx);
+
+    return await ctx.db.insert("resources", {
+      title: args.title.trim() || "Interview Prep",
+      fileStorageId: args.fileStorageId,
+      uploadedBy: userId,
+      uploadedAt: Date.now(),
+      category: "interview_prep",
+    });
+  },
+});
+
+export const deleteResource = mutation({
+  args: { resourceId: v.id("resources") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const resource = await ctx.db.get(args.resourceId);
+    if (!resource) throw new Error("Resource not found");
+
+    await ctx.storage.delete(resource.fileStorageId);
+    await ctx.db.delete(args.resourceId);
   },
 });
 
@@ -79,15 +122,19 @@ export const list = query({
         const fileUrl = await ctx.storage.getUrl(resource.fileStorageId);
 
         // Look up event to get presenter names and event date
-        const event = await ctx.db.get(resource.eventId);
         let corporatePresenterName: string | null = null;
         let marketPresenterName: string | null = null;
         let corporatePresenter: string | null = null;
         let marketPresenter: string | null = null;
         let eventDate: string | null = null;
+        let eventType: string | null = null;
+
+        const event = resource.eventId ? await ctx.db.get(resource.eventId) : null;
 
         if (event) {
           eventDate = event.date;
+          eventType = event.eventType
+            ?? (event.isCorporateMarketUpdate ? "corporate_market_update" : null);
           if (event.corporateAssignee) {
             corporatePresenter = event.corporateAssignee;
             const profile = await ctx.db
@@ -110,6 +157,12 @@ export const list = query({
           }
         }
 
+        // Derive category: use stored category, or derive from event type, or default
+        const category = resource.category
+          ?? (eventType === "corporate_market_update" ? "market_corporate"
+            : eventType === "workshop" ? "workshop"
+            : "market_corporate");
+
         return {
           ...resource,
           fileUrl,
@@ -118,6 +171,7 @@ export const list = query({
           marketPresenterName,
           corporatePresenter,
           marketPresenter,
+          category,
         };
       })
     );

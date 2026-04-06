@@ -418,6 +418,7 @@ export const updateSpecialRole = mutation({
     specialRole: v.union(
       v.literal("admin"),
       v.literal("attendance_tracker"),
+      v.literal("cv_reviewer"),
       v.literal("none")
     ),
   },
@@ -437,6 +438,35 @@ export const updateSpecialRole = mutation({
     await ctx.db.patch(args.profileId, {
       specialRole: args.specialRole === "none" ? undefined : args.specialRole,
     });
+  },
+});
+
+export const updatePhoneNumber = mutation({
+  args: { phoneNumber: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile) throw new Error("Profile not found");
+
+    await ctx.db.patch(profile._id, { phoneNumber: args.phoneNumber });
+  },
+});
+
+export const listCvReviewers = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const profiles = await ctx.db.query("profiles").collect();
+    return profiles
+      .filter((p) => p.status === "approved" && p.specialRole === "cv_reviewer")
+      .map((p) => ({ userId: p.userId, displayName: p.displayName }));
   },
 });
 

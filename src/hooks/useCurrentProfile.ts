@@ -8,12 +8,14 @@ export function useCurrentProfile() {
   const hasAdminAccess = isBoardMember || profile?.specialRole === "admin";
   const canRecordAttendance =
     hasAdminAccess || profile?.specialRole === "attendance_tracker";
+  const isCvReviewer = profile?.specialRole === "cv_reviewer";
 
   return {
     profile,
     isBoardMember,
     hasAdminAccess,
     canRecordAttendance,
+    isCvReviewer,
     isCommitteeMember: profile?.role === "committee_member",
     isAlumni: profile?.role === "alumni",
     isPending: profile?.status === "pending",

@@ -11,3 +11,10 @@ export function hasAttendanceAccess(profile: {
 }): boolean {
   return hasAdminAccess(profile) || profile.specialRole === "attendance_tracker";
 }
+
+export function hasCvReviewerAccess(profile: {
+  role: string;
+  specialRole?: string;
+}): boolean {
+  return profile.specialRole === "cv_reviewer";
+}

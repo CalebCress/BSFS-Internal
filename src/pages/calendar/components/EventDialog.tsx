@@ -37,6 +37,8 @@ import { ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+type EventType = "corporate_market_update" | "workshop" | "other";
+
 interface EventData {
   _id: Id<"events">;
   title: string;
@@ -47,6 +49,7 @@ interface EventData {
   location?: string;
   seriesId?: string;
   isCorporateMarketUpdate?: boolean;
+  eventType?: EventType;
   corporateAssignee?: Id<"users">;
   marketAssignee?: Id<"users">;
   mandatoryAttendance?: boolean;
@@ -68,6 +71,12 @@ const DAYS_OF_WEEK = [
   { value: "0", label: "Sunday" },
 ];
 
+const EVENT_TYPES = [
+  { value: "other", label: "Other" },
+  { value: "corporate_market_update", label: "Market & Corporate Update" },
+  { value: "workshop", label: "Workshop" },
+] as const;
+
 export function EventDialog({
   open,
   onOpenChange,
@@ -88,7 +97,7 @@ export function EventDialog({
   const [recurring, setRecurring] = useState(false);
   const [dayOfWeek, setDayOfWeek] = useState("1");
   const [weeksCount, setWeeksCount] = useState(12);
-  const [isCorporateMarketUpdate, setIsCorporateMarketUpdate] = useState(false);
+  const [eventType, setEventType] = useState<EventType>("other");
   const [corporateAssignee, setCorporateAssignee] = useState("");
   const [marketAssignee, setMarketAssignee] = useState("");
   const [mandatoryAttendance, setMandatoryAttendance] = useState(false);
@@ -96,6 +105,7 @@ export function EventDialog({
   const [marketPopoverOpen, setMarketPopoverOpen] = useState(false);
 
   const isEditing = !!editingEvent;
+  const isCorporateMarketUpdate = eventType === "corporate_market_update";
 
   // All approved members for assignment dropdowns
   const allMembers = profiles ?? [];
@@ -109,7 +119,10 @@ export function EventDialog({
       setEndTime(editingEvent.endTime);
       setLocation(editingEvent.location ?? "");
       setRecurring(false);
-      setIsCorporateMarketUpdate(editingEvent.isCorporateMarketUpdate ?? false);
+      // Derive eventType from existing data
+      const et = editingEvent.eventType
+        ?? (editingEvent.isCorporateMarketUpdate ? "corporate_market_update" : "other");
+      setEventType(et as EventType);
       setMandatoryAttendance(editingEvent.mandatoryAttendance ?? false);
       setCorporateAssignee(editingEvent.corporateAssignee ?? "");
       setMarketAssignee(editingEvent.marketAssignee ?? "");
@@ -123,7 +136,7 @@ export function EventDialog({
       setRecurring(false);
       setDayOfWeek("1");
       setWeeksCount(12);
-      setIsCorporateMarketUpdate(false);
+      setEventType("other");
       setMandatoryAttendance(false);
       setCorporateAssignee("");
       setMarketAssignee("");
@@ -149,7 +162,8 @@ export function EventDialog({
           startTime,
           endTime,
           location: location.trim() || undefined,
-          isCorporateMarketUpdate,
+          eventType,
+          isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
           mandatoryAttendance,
           corporateAssignee:
             isCorporateMarketUpdate && corporateAssignee
@@ -175,6 +189,7 @@ export function EventDialog({
           endTime,
           startDate: date,
           weeksCount,
+          eventType,
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
           mandatoryAttendance: mandatoryAttendance || undefined,
         });
@@ -192,6 +207,7 @@ export function EventDialog({
           startTime,
           endTime,
           location: location.trim() || undefined,
+          eventType,
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
           mandatoryAttendance: mandatoryAttendance || undefined,
           corporateAssignee:
@@ -354,20 +370,30 @@ export function EventDialog({
             </div>
           )}
 
-          {/* Corporate & Market Update checkbox */}
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="corporateMarketUpdate"
-              checked={isCorporateMarketUpdate}
-              onCheckedChange={(checked) => {
-                const isChecked = checked === true;
-                setIsCorporateMarketUpdate(isChecked);
-                if (isChecked) setMandatoryAttendance(true);
+          {/* Event Type dropdown */}
+          <div className="space-y-2">
+            <Label>Event Type</Label>
+            <Select
+              value={eventType}
+              onValueChange={(val) => {
+                const newType = val as EventType;
+                setEventType(newType);
+                if (newType === "corporate_market_update") {
+                  setMandatoryAttendance(true);
+                }
               }}
-            />
-            <Label htmlFor="corporateMarketUpdate" className="cursor-pointer">
-              Corporate & Market Update
-            </Label>
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Mandatory Attendance checkbox */}
@@ -386,7 +412,7 @@ export function EventDialog({
             >
               Mandatory Attendance
               {isCorporateMarketUpdate && (
-                <span className="ml-1 text-xs text-muted-foreground">(auto-enabled for C&M Updates)</span>
+                <span className="ml-1 text-xs text-muted-foreground">(auto-enabled for M&C Updates)</span>
               )}
             </Label>
           </div>

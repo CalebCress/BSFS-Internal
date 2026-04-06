@@ -11,7 +11,11 @@ import { StockDetailPage } from "./pages/stocks/StockDetailPage";
 import { MembersPage } from "./pages/members/MembersPage";
 import { MemberProfilePage } from "./pages/members/MemberProfilePage";
 import { AlumniPage } from "./pages/alumni/AlumniPage";
-import { ResourcesPage } from "./pages/resources/ResourcesPage";
+import { MarketCorporatePage } from "./pages/resources/MarketCorporatePage";
+import { WorkshopsPage } from "./pages/resources/WorkshopsPage";
+import { InterviewPrepPage } from "./pages/resources/InterviewPrepPage";
+import { CvReviewPage } from "./pages/careers/CvReviewPage";
+import { ReviewQueuePage } from "./pages/careers/ReviewQueuePage";
 import { PublicApplicationPage } from "./pages/public/PublicApplicationPage";
 import { ProfileSetupPage } from "./pages/ProfileSetupPage";
 import { PendingApprovalPage } from "./pages/PendingApprovalPage";
@@ -53,7 +57,11 @@ export const router = createBrowserRouter([
       { path: "admin/members", element: <RequireAccess check="admin"><MemberManagementPage /></RequireAccess> },
       { path: "admin/attendance", element: <RequireAccess check="attendance"><AttendancePage /></RequireAccess> },
       { path: "alumni", element: <AlumniPage /> },
-      { path: "resources", element: <RequireAccess check="member"><ResourcesPage /></RequireAccess> },
+      { path: "resources/market-corporate", element: <RequireAccess check="member"><MarketCorporatePage /></RequireAccess> },
+      { path: "resources/workshops", element: <RequireAccess check="member"><WorkshopsPage /></RequireAccess> },
+      { path: "resources/interview-prep", element: <RequireAccess check="member"><InterviewPrepPage /></RequireAccess> },
+      { path: "careers/cv-review", element: <RequireAccess check="member"><CvReviewPage /></RequireAccess> },
+      { path: "careers/review-queue", element: <RequireAccess check="cv_reviewer"><ReviewQueuePage /></RequireAccess> },
     ],
   },
 ]);

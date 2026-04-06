@@ -14,8 +14,9 @@ export default defineSchema({
       v.literal("alumni")
     ),
     specialRole: v.optional(
-      v.union(v.literal("admin"), v.literal("attendance_tracker"))
+      v.union(v.literal("admin"), v.literal("attendance_tracker"), v.literal("cv_reviewer"))
     ),
+    phoneNumber: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -136,6 +137,11 @@ export default defineSchema({
     seriesId: v.optional(v.string()),
     createdBy: v.id("users"),
     isCorporateMarketUpdate: v.optional(v.boolean()),
+    eventType: v.optional(v.union(
+      v.literal("corporate_market_update"),
+      v.literal("workshop"),
+      v.literal("other"),
+    )),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
     mandatoryAttendance: v.optional(v.boolean()),
@@ -162,13 +168,35 @@ export default defineSchema({
   // Uploaded presentation resources
   resources: defineTable({
     title: v.string(),
-    eventId: v.id("events"),
+    eventId: v.optional(v.id("events")),
     fileStorageId: v.id("_storage"),
     uploadedBy: v.id("users"),
     uploadedAt: v.number(),
+    category: v.optional(v.union(
+      v.literal("market_corporate"),
+      v.literal("workshop"),
+      v.literal("interview_prep"),
+    )),
   })
     .index("by_event", ["eventId"])
-    .index("by_uploadedAt", ["uploadedAt"]),
+    .index("by_uploadedAt", ["uploadedAt"])
+    .index("by_category", ["category"]),
+
+  // CV review requests
+  cvReviews: defineTable({
+    submittedBy: v.id("users"),
+    cvStorageId: v.id("_storage"),
+    assignedTo: v.optional(v.id("users")), // undefined = "Anyone"
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+    ),
+    submittedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_submittedBy", ["submittedBy"])
+    .index("by_assignedTo", ["assignedTo"])
+    .index("by_status", ["status"]),
 
   // Reviews/scores given to applicants
   reviews: defineTable({
