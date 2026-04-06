@@ -85,7 +85,7 @@ export function MemberManagementPage() {
 
   const handleSpecialRoleChange = async (
     profileId: Id<"profiles">,
-    specialRole: "admin" | "attendance_tracker" | "none",
+    specialRole: "admin" | "attendance_tracker" | "cv_reviewer" | "none",
     name: string
   ) => {
     try {
