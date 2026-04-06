@@ -275,7 +275,6 @@ export function MemberManagementPage() {
                     }
                     disabled={
                       isMe ||
-                      member.role === "board_member" ||
                       member.role === "alumni"
                     }
                   >
