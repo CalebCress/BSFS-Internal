@@ -1,14 +1,19 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { ResourceCard } from "./components/ResourceCard";
+import { UploadResourceDialog } from "./components/UploadResourceDialog";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export function MarketCorporatePage() {
   const resources = useQuery(api.resources.list);
   const deleteResource = useMutation(api.resources.deleteResource);
   const { hasAdminAccess } = useCurrentProfile();
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const filtered = resources?.filter((r) => r.category === "market_corporate") ?? [];
 
@@ -23,11 +28,19 @@ export function MarketCorporatePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Market & Corporate Updates</h1>
-        <p className="text-muted-foreground">
-          Presentations from weekly market and corporate update meetings.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Market & Corporate Updates</h1>
+          <p className="text-muted-foreground">
+            Presentations from weekly market and corporate update meetings.
+          </p>
+        </div>
+        {hasAdminAccess && (
+          <Button onClick={() => setUploadOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Upload
+          </Button>
+        )}
       </div>
 
       {resources === undefined ? (
@@ -53,6 +66,12 @@ export function MarketCorporatePage() {
           ))}
         </div>
       )}
+
+      <UploadResourceDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        eventType="corporate_market_update"
+      />
     </div>
   );
 }
