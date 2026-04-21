@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/avatar";
 import { RatingBadge } from "../stocks/components/RatingBadge";
 import { EditProfileDialog } from "./components/EditProfileDialog";
+import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import {
   ArrowLeft,
   Mail,
   Linkedin,
   FileDown,
   Pencil,
+  KeyRound,
 } from "lucide-react";
 import { ROLES, SENTIMENT, type Role, type Sentiment } from "@/lib/constants";
 
@@ -39,6 +41,7 @@ export function MemberProfilePage() {
   const navigate = useNavigate();
   const { profile: myProfile } = useCurrentProfile();
   const [editOpen, setEditOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const profile = useQuery(
     api.profiles.getProfileByUserId,
@@ -171,14 +174,24 @@ export function MemberProfilePage() {
             </Button>
           )}
           {isOwnProfile && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditOpen(true)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit Profile
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPasswordOpen(true)}
+              >
+                <KeyRound className="mr-2 h-4 w-4" />
+                Change Password
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -260,21 +273,27 @@ export function MemberProfilePage() {
 
       {/* Edit Profile Dialog */}
       {isOwnProfile && (
-        <EditProfileDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          role={profile.role}
-          profile={{
-            displayName: profile.displayName,
-            linkedIn: profile.linkedIn,
-            photoStorageId: profile.photoStorageId,
-            cvStorageId: profile.cvStorageId,
-            photoUrl: profile.photoUrl,
-            cvUrl: profile.cvUrl,
-            jobTitle: profile.jobTitle,
-            company: profile.company,
-          }}
-        />
+        <>
+          <EditProfileDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            role={profile.role}
+            profile={{
+              displayName: profile.displayName,
+              linkedIn: profile.linkedIn,
+              photoStorageId: profile.photoStorageId,
+              cvStorageId: profile.cvStorageId,
+              photoUrl: profile.photoUrl,
+              cvUrl: profile.cvUrl,
+              jobTitle: profile.jobTitle,
+              company: profile.company,
+            }}
+          />
+          <ChangePasswordDialog
+            open={passwordOpen}
+            onOpenChange={setPasswordOpen}
+          />
+        </>
       )}
     </div>
   );

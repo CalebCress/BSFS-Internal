@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/avatar";
 import { Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { centerCropToSquare } from "@/lib/cropImage";
 
 interface EditProfileDialogProps {
   open: boolean;
@@ -97,13 +98,14 @@ export function EditProfileDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
-
     try {
-      const id = await uploadFile(file);
+      const cropped = await centerCropToSquare(file);
+
+      const reader = new FileReader();
+      reader.onload = () => setPhotoPreview(reader.result as string);
+      reader.readAsDataURL(cropped);
+
+      const id = await uploadFile(cropped);
       setPhotoStorageId(id);
       toast.success("Photo uploaded");
     } catch {

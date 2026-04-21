@@ -23,6 +23,7 @@ import {
 import { Upload, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
+import { centerCropToSquare } from "@/lib/cropImage";
 
 function AlumniSetupForm() {
   const { profile, isLoading } = useCurrentProfile();
@@ -74,12 +75,14 @@ function AlumniSetupForm() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => setPhotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
-
     try {
-      const id = await uploadFile(file);
+      const cropped = await centerCropToSquare(file);
+
+      const reader = new FileReader();
+      reader.onload = () => setPhotoPreview(reader.result as string);
+      reader.readAsDataURL(cropped);
+
+      const id = await uploadFile(cropped);
       setPhotoStorageId(id);
       toast.success("Photo uploaded");
     } catch {

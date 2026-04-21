@@ -82,9 +82,13 @@ export function AppSidebar() {
       <SidebarHeader className="border-b px-4 py-4 border-l-4 border-l-bsfs-blue">
         <h2 className="text-lg font-semibold text-bsfs-blue">BSFS Internal</h2>
         {profile && (
-          <p className="text-xs text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => navigate(`/members/${profile.userId}`)}
+            className="text-left text-xs text-muted-foreground hover:text-bsfs-blue hover:underline"
+          >
             {profile.displayName}
-          </p>
+          </button>
         )}
       </SidebarHeader>
       <SidebarContent>
