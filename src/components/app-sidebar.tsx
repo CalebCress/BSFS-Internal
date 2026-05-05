@@ -169,37 +169,35 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Resources (hidden from alumni) */}
-              {!isAlumni && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={isInResources}
-                    onClick={() => setResourcesOpen(!resourcesOpen)}
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    <span>Resources</span>
-                    <ChevronRight
-                      className={`ml-auto h-4 w-4 transition-transform ${
-                        resourcesOpen ? "rotate-90" : ""
-                      }`}
-                    />
-                  </SidebarMenuButton>
-                  {resourcesOpen && (
-                    <SidebarMenuSub>
-                      {resourceSubItems.map((item) => (
-                        <SidebarMenuSubItem key={item.path}>
-                          <SidebarMenuSubButton
-                            isActive={location.pathname === item.path}
-                            onClick={() => navigate(item.path)}
-                          >
-                            <span>{item.title}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  )}
-                </SidebarMenuItem>
-              )}
+              {/* Resources */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isInResources}
+                  onClick={() => setResourcesOpen(!resourcesOpen)}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span>Resources</span>
+                  <ChevronRight
+                    className={`ml-auto h-4 w-4 transition-transform ${
+                      resourcesOpen ? "rotate-90" : ""
+                    }`}
+                  />
+                </SidebarMenuButton>
+                {resourcesOpen && (
+                  <SidebarMenuSub>
+                    {resourceSubItems.map((item) => (
+                      <SidebarMenuSubItem key={item.path}>
+                        <SidebarMenuSubButton
+                          isActive={location.pathname === item.path}
+                          onClick={() => navigate(item.path)}
+                        >
+                          <span>{item.title}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
+              </SidebarMenuItem>
 
               {/* Careers (hidden from alumni) */}
               {!isAlumni && (
