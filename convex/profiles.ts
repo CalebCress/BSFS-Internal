@@ -555,8 +555,10 @@ export const listProfiles = query({
       .withIndex("by_status", (q) => q.eq("status", "approved"))
       .collect();
 
+    const nonAlumni = profiles.filter((p) => p.role !== "alumni");
+
     return Promise.all(
-      profiles.map(async (profile) => {
+      nonAlumni.map(async (profile) => {
         const user = await ctx.db.get(profile.userId);
         const photoUrl = profile.photoStorageId
           ? await ctx.storage.getUrl(profile.photoStorageId)
