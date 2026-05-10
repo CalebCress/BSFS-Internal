@@ -150,7 +150,7 @@ function AttendanceDialog({
   eventId: Id<"events">;
   onClose: () => void;
 }) {
-  const members = useQuery(api.profiles.listProfiles);
+  const members = useQuery(api.profiles.listProfiles, {});
   const existingRecords = useQuery(api.attendance.getByEvent, { eventId });
   const recordBatch = useMutation(api.attendance.recordBatch);
 

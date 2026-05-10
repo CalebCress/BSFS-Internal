@@ -90,6 +90,34 @@ export const uploadInterviewPrep = mutation({
   },
 });
 
+export const uploadReport = mutation({
+  args: {
+    title: v.string(),
+    fileStorageId: v.id("_storage"),
+    category: v.union(
+      v.literal("regional_reports"),
+      v.literal("special_reports"),
+    ),
+    presenterUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAdmin(ctx);
+
+    if (args.category === "regional_reports" && !args.presenterUserId) {
+      throw new Error("Regional Reports require a presenter");
+    }
+
+    return await ctx.db.insert("resources", {
+      title: args.title.trim() || (args.category === "regional_reports" ? "Regional Report" : "Special Report"),
+      fileStorageId: args.fileStorageId,
+      uploadedBy: userId,
+      uploadedAt: Date.now(),
+      category: args.category,
+      presenterUserId: args.presenterUserId,
+    });
+  },
+});
+
 export const deleteResource = mutation({
   args: { resourceId: v.id("resources") },
   handler: async (ctx, args) => {
@@ -128,6 +156,8 @@ export const list = query({
         let marketPresenter: string | null = null;
         let eventDate: string | null = null;
         let eventType: string | null = null;
+        let presenter: string | null = null;
+        let presenterName: string | null = null;
 
         const event = resource.eventId ? await ctx.db.get(resource.eventId) : null;
 
@@ -157,6 +187,17 @@ export const list = query({
           }
         }
 
+        if (resource.presenterUserId) {
+          presenter = resource.presenterUserId;
+          const profile = await ctx.db
+            .query("profiles")
+            .withIndex("by_userId", (q: any) =>
+              q.eq("userId", resource.presenterUserId)
+            )
+            .unique();
+          presenterName = profile?.displayName ?? null;
+        }
+
         // Derive category: use stored category, or derive from event type, or default
         const category = resource.category
           ?? (eventType === "corporate_market_update" ? "market_corporate"
@@ -171,6 +212,8 @@ export const list = query({
           marketPresenterName,
           corporatePresenter,
           marketPresenter,
+          presenter,
+          presenterName,
           category,
         };
       })

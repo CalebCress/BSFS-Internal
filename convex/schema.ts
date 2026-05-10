@@ -176,7 +176,10 @@ export default defineSchema({
       v.literal("market_corporate"),
       v.literal("workshop"),
       v.literal("interview_prep"),
+      v.literal("regional_reports"),
+      v.literal("special_reports"),
     )),
+    presenterUserId: v.optional(v.id("users")),
   })
     .index("by_event", ["eventId"])
     .index("by_uploadedAt", ["uploadedAt"])

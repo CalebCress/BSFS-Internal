@@ -4,21 +4,18 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { ResourceCard } from "./components/ResourceCard";
-import { UploadResourceDialog } from "./components/UploadResourceDialog";
+import { UploadReportDialog } from "./components/UploadReportDialog";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 
-export function MarketCorporatePage() {
+export function RegionalReportsPage() {
   const resources = useQuery(api.resources.list);
   const deleteResource = useMutation(api.resources.deleteResource);
   const { hasAdminAccess } = useCurrentProfile();
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const filtered =
-    resources
-      ?.filter((r) => r.category === "market_corporate")
-      .sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? "")) ?? [];
+  const filtered = resources?.filter((r) => r.category === "regional_reports") ?? [];
 
   const handleDelete = async (resourceId: Id<"resources">) => {
     try {
@@ -33,9 +30,9 @@ export function MarketCorporatePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Market & Corporate Updates</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Regional Reports</h1>
           <p className="text-muted-foreground">
-            Presentations from weekly market and corporate update meetings.
+            Reports presented by region.
           </p>
         </div>
         {hasAdminAccess && (
@@ -54,7 +51,7 @@ export function MarketCorporatePage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-          No market & corporate update resources uploaded yet.
+          No regional reports uploaded yet.
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -62,7 +59,7 @@ export function MarketCorporatePage() {
             <ResourceCard
               key={resource._id}
               resource={resource}
-              showPresenters
+              showPresenter
               showDelete={hasAdminAccess}
               onDelete={handleDelete}
             />
@@ -70,10 +67,10 @@ export function MarketCorporatePage() {
         </div>
       )}
 
-      <UploadResourceDialog
+      <UploadReportDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        eventType="corporate_market_update"
+        category="regional_reports"
       />
     </div>
   );

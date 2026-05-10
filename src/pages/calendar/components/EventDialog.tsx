@@ -85,7 +85,7 @@ export function EventDialog({
   const createEvent = useMutation(api.events.create);
   const createRecurring = useMutation(api.events.createRecurring);
   const updateEvent = useMutation(api.events.update);
-  const profiles = useQuery(api.profiles.listProfiles);
+  const profiles = useQuery(api.profiles.listProfiles, {});
 
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("");

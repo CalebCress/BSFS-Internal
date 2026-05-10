@@ -43,7 +43,7 @@ export function UploadResourceDialog({
   const createEvent = useMutation(api.events.create);
   const generateUploadUrl = useMutation(api.profiles.generateUploadUrl);
   const uploadPresentation = useMutation(api.resources.uploadPresentation);
-  const profiles = useQuery(api.profiles.listProfiles);
+  const profiles = useQuery(api.profiles.listProfiles, { includeAlumni: true });
 
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("");

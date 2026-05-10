@@ -23,7 +23,7 @@ function getInitials(name: string): string {
 }
 
 export function MembersPage() {
-  const profiles = useQuery(api.profiles.listProfiles);
+  const profiles = useQuery(api.profiles.listProfiles, {});
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 

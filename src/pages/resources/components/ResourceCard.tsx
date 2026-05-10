@@ -15,8 +15,11 @@ interface ResourceCardProps {
     marketPresenterName: string | null;
     corporatePresenter: string | null;
     marketPresenter: string | null;
+    presenter?: string | null;
+    presenterName?: string | null;
   };
   showPresenters?: boolean;
+  showPresenter?: boolean;
   showDelete?: boolean;
   onDelete?: (id: Id<"resources">) => void;
 }
@@ -24,6 +27,7 @@ interface ResourceCardProps {
 export function ResourceCard({
   resource,
   showPresenters,
+  showPresenter,
   showDelete,
   onDelete,
 }: ResourceCardProps) {
@@ -94,6 +98,17 @@ export function ResourceCard({
               )}
             </div>
           )}
+        {showPresenter && resource.presenterName && resource.presenter && (
+          <div className="text-xs text-muted-foreground border-t pt-2">
+            <span className="font-medium">From: </span>
+            <button
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+              onClick={() => navigate(`/members/${resource.presenter}`)}
+            >
+              {resource.presenterName}
+            </button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

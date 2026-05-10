@@ -545,8 +545,10 @@ export const generateIcalToken = mutation({
 
 // Only return approved profiles (for the Members directory)
 export const listProfiles = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    includeAlumni: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
@@ -555,10 +557,12 @@ export const listProfiles = query({
       .withIndex("by_status", (q) => q.eq("status", "approved"))
       .collect();
 
-    const nonAlumni = profiles.filter((p) => p.role !== "alumni");
+    const filtered = args.includeAlumni
+      ? profiles
+      : profiles.filter((p) => p.role !== "alumni");
 
     return Promise.all(
-      nonAlumni.map(async (profile) => {
+      filtered.map(async (profile) => {
         const user = await ctx.db.get(profile.userId);
         const photoUrl = profile.photoStorageId
           ? await ctx.storage.getUrl(profile.photoStorageId)

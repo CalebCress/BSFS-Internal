@@ -14,6 +14,8 @@ import { AlumniPage } from "./pages/alumni/AlumniPage";
 import { MarketCorporatePage } from "./pages/resources/MarketCorporatePage";
 import { WorkshopsPage } from "./pages/resources/WorkshopsPage";
 import { InterviewPrepPage } from "./pages/resources/InterviewPrepPage";
+import { RegionalReportsPage } from "./pages/resources/RegionalReportsPage";
+import { SpecialReportsPage } from "./pages/resources/SpecialReportsPage";
 import { CvReviewPage } from "./pages/careers/CvReviewPage";
 import { ReviewQueuePage } from "./pages/careers/ReviewQueuePage";
 import { PublicApplicationPage } from "./pages/public/PublicApplicationPage";
@@ -59,6 +61,8 @@ export const router = createBrowserRouter([
       { path: "alumni", element: <AlumniPage /> },
       { path: "resources/market-corporate", element: <MarketCorporatePage /> },
       { path: "resources/workshops", element: <WorkshopsPage /> },
+      { path: "resources/regional-reports", element: <RegionalReportsPage /> },
+      { path: "resources/special-reports", element: <SpecialReportsPage /> },
       { path: "resources/interview-prep", element: <InterviewPrepPage /> },
       { path: "careers/cv-review", element: <RequireAccess check="member"><CvReviewPage /></RequireAccess> },
       { path: "careers/review-queue", element: <RequireAccess check="cv_reviewer"><ReviewQueuePage /></RequireAccess> },

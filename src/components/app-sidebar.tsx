@@ -48,6 +48,8 @@ const careerSubItems = [
 const resourceSubItems = [
   { title: "Market & Corporate", path: "/resources/market-corporate" },
   { title: "Workshops", path: "/resources/workshops" },
+  { title: "Regional Reports", path: "/resources/regional-reports" },
+  { title: "Special Reports", path: "/resources/special-reports" },
   { title: "Interview Prep", path: "/resources/interview-prep" },
 ];
 
