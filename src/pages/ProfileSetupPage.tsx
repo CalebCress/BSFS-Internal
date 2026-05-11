@@ -34,6 +34,7 @@ function ProfileSetupForm() {
   const [submitting, setSubmitting] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [linkedIn, setLinkedIn] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [photoStorageId, setPhotoStorageId] = useState<Id<"_storage"> | undefined>();
   const [cvStorageId, setCvStorageId] = useState<Id<"_storage"> | undefined>();
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -115,6 +116,7 @@ function ProfileSetupForm() {
       await submitSignUp({
         displayName: displayName.trim(),
         linkedIn: linkedIn.trim() || undefined,
+        phoneNumber: phoneNumber.trim() || undefined,
         photoStorageId,
         cvStorageId,
       });
@@ -215,6 +217,18 @@ function ProfileSetupForm() {
                 value={linkedIn}
                 onChange={(e) => setLinkedIn(e.target.value)}
                 placeholder="https://linkedin.com/in/yourprofile"
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+44 7123 456789"
               />
             </div>
 

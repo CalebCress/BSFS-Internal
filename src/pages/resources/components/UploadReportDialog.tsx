@@ -32,16 +32,14 @@ import { toast } from "sonner";
 interface UploadReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category: "regional_reports" | "special_reports";
 }
 
 export function UploadReportDialog({
   open,
   onOpenChange,
-  category,
 }: UploadReportDialogProps) {
   const generateUploadUrl = useMutation(api.profiles.generateUploadUrl);
-  const uploadReport = useMutation(api.resources.uploadReport);
+  const uploadSpecialReport = useMutation(api.resources.uploadSpecialReport);
   const profiles = useQuery(api.profiles.listProfiles, { includeAlumni: true });
 
   const [submitting, setSubmitting] = useState(false);
@@ -52,9 +50,8 @@ export function UploadReportDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const allMembers = profiles ?? [];
-  const presenterRequired = category === "regional_reports";
-  const labelKind = category === "regional_reports" ? "Regional Report" : "Special Report";
-  const presenterLabel = category === "regional_reports" ? "Presenter" : "Presenter / Author";
+  const labelKind = "Special Report";
+  const presenterLabel = "Presenter / Author";
 
   const reset = () => {
     setTitle("");
@@ -74,10 +71,6 @@ export function UploadReportDialog({
       toast.error("Please select a PDF file");
       return;
     }
-    if (presenterRequired && !presenterUserId) {
-      toast.error("Please select a presenter");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -89,10 +82,9 @@ export function UploadReportDialog({
       });
       const { storageId } = await result.json();
 
-      await uploadReport({
+      await uploadSpecialReport({
         title: title.trim(),
         fileStorageId: storageId as Id<"_storage">,
-        category,
         presenterUserId: presenterUserId
           ? (presenterUserId as Id<"users">)
           : undefined,
@@ -150,11 +142,9 @@ export function UploadReportDialog({
           <div className="space-y-2">
             <Label>
               {presenterLabel}
-              {!presenterRequired && (
-                <span className="ml-1 text-xs text-muted-foreground">
-                  (optional)
-                </span>
-              )}
+              <span className="ml-1 text-xs text-muted-foreground">
+                (optional)
+              </span>
             </Label>
             <Popover
               open={presenterPopoverOpen}

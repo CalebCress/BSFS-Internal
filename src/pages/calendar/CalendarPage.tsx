@@ -49,7 +49,7 @@ interface EventData {
   seriesId?: string;
   createdBy: Id<"users">;
   isCorporateMarketUpdate?: boolean;
-  eventType?: "corporate_market_update" | "workshop" | "other";
+  eventType?: "corporate_market_update" | "workshop" | "regional" | "other";
   corporateAssignee?: Id<"users">;
   marketAssignee?: Id<"users">;
   corporateAssigneeName?: string | null;
@@ -339,7 +339,9 @@ export function CalendarPage() {
                               ? "bg-green-100 text-green-800"
                               : event.eventType === "workshop"
                                 ? "bg-orange-100 text-orange-800"
-                                : "bg-blue-100 text-blue-800"
+                                : event.eventType === "regional"
+                                  ? "bg-teal-100 text-teal-800"
+                                  : "bg-blue-100 text-blue-800"
                           }`}
                         >
                           {event.title}
@@ -507,6 +509,36 @@ export function CalendarPage() {
                         >
                           Workshop
                         </Badge>
+                        {hasAdminAccess && (
+                          <PresentationUpload eventId={event._id} />
+                        )}
+                      </div>
+                    )}
+                    {/* Regional Report details */}
+                    {event.eventType === "regional" && (
+                      <div className="space-y-1.5 border-t pt-2">
+                        <Badge
+                          variant="secondary"
+                          className="bg-teal-50 text-teal-700 text-[10px]"
+                        >
+                          Regional Report
+                        </Badge>
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium">Presenter:</span>{" "}
+                          {event.corporateAssigneeName && event.corporateAssignee ? (
+                            <button
+                              className="underline underline-offset-2 hover:text-foreground transition-colors"
+                              onClick={() => {
+                                setDayDialogOpen(false);
+                                navigate(`/members/${event.corporateAssignee}`);
+                              }}
+                            >
+                              {event.corporateAssigneeName}
+                            </button>
+                          ) : (
+                            "Unassigned"
+                          )}
+                        </div>
                         {hasAdminAccess && (
                           <PresentationUpload eventId={event._id} />
                         )}

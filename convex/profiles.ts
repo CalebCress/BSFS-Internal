@@ -71,6 +71,7 @@ export const updateProfile = mutation({
     cvStorageId: v.optional(v.id("_storage")),
     jobTitle: v.optional(v.string()),
     company: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -90,6 +91,7 @@ export const updateProfile = mutation({
       cvStorageId: args.cvStorageId,
       jobTitle: args.jobTitle?.trim() || undefined,
       company: args.company?.trim() || undefined,
+      phoneNumber: args.phoneNumber?.trim() || undefined,
     });
   },
 });
@@ -110,6 +112,7 @@ export const submitSignUp = mutation({
     linkedIn: v.optional(v.string()),
     photoStorageId: v.optional(v.id("_storage")),
     cvStorageId: v.optional(v.id("_storage")),
+    phoneNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -130,6 +133,7 @@ export const submitSignUp = mutation({
       linkedIn: args.linkedIn?.trim() || undefined,
       photoStorageId: args.photoStorageId,
       cvStorageId: args.cvStorageId,
+      phoneNumber: args.phoneNumber?.trim() || undefined,
     });
   },
 });
@@ -143,6 +147,7 @@ export const submitAlumniSignUp = mutation({
     linkedIn: v.optional(v.string()),
     photoStorageId: v.optional(v.id("_storage")),
     cvStorageId: v.optional(v.id("_storage")),
+    phoneNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -165,6 +170,7 @@ export const submitAlumniSignUp = mutation({
       linkedIn: args.linkedIn?.trim() || undefined,
       photoStorageId: args.photoStorageId,
       cvStorageId: args.cvStorageId,
+      phoneNumber: args.phoneNumber?.trim() || undefined,
     });
   },
 });

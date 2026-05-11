@@ -4,7 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { ResourceCard } from "./components/ResourceCard";
-import { UploadReportDialog } from "./components/UploadReportDialog";
+import { UploadResourceDialog } from "./components/UploadResourceDialog";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +15,10 @@ export function RegionalReportsPage() {
   const { hasAdminAccess } = useCurrentProfile();
   const [uploadOpen, setUploadOpen] = useState(false);
 
-  const filtered = resources?.filter((r) => r.category === "regional_reports") ?? [];
+  const filtered =
+    resources
+      ?.filter((r) => r.category === "regional_reports")
+      .sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? "")) ?? [];
 
   const handleDelete = async (resourceId: Id<"resources">) => {
     try {
@@ -59,7 +62,7 @@ export function RegionalReportsPage() {
             <ResourceCard
               key={resource._id}
               resource={resource}
-              showPresenter
+              showPresenters
               showDelete={hasAdminAccess}
               onDelete={handleDelete}
             />
@@ -67,10 +70,10 @@ export function RegionalReportsPage() {
         </div>
       )}
 
-      <UploadReportDialog
+      <UploadResourceDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        category="regional_reports"
+        eventType="regional"
       />
     </div>
   );

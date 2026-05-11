@@ -31,13 +31,19 @@ export const uploadPresentation = mutation({
     const eventType = event.eventType
       ?? (event.isCorporateMarketUpdate ? "corporate_market_update" : undefined);
 
-    if (eventType !== "corporate_market_update" && eventType !== "workshop") {
-      throw new Error("Uploads are only supported for Market & Corporate Update and Workshop events");
+    if (
+      eventType !== "corporate_market_update" &&
+      eventType !== "workshop" &&
+      eventType !== "regional"
+    ) {
+      throw new Error("Uploads are only supported for Market & Corporate Update, Workshop, and Regional events");
     }
 
     const category = eventType === "corporate_market_update"
       ? "market_corporate" as const
-      : "workshop" as const;
+      : eventType === "regional"
+        ? "regional_reports" as const
+        : "workshop" as const;
 
     // Check if a resource already exists for this event
     const existing = await ctx.db
@@ -90,29 +96,21 @@ export const uploadInterviewPrep = mutation({
   },
 });
 
-export const uploadReport = mutation({
+export const uploadSpecialReport = mutation({
   args: {
     title: v.string(),
     fileStorageId: v.id("_storage"),
-    category: v.union(
-      v.literal("regional_reports"),
-      v.literal("special_reports"),
-    ),
     presenterUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const userId = await requireAdmin(ctx);
 
-    if (args.category === "regional_reports" && !args.presenterUserId) {
-      throw new Error("Regional Reports require a presenter");
-    }
-
     return await ctx.db.insert("resources", {
-      title: args.title.trim() || (args.category === "regional_reports" ? "Regional Report" : "Special Report"),
+      title: args.title.trim() || "Special Report",
       fileStorageId: args.fileStorageId,
       uploadedBy: userId,
       uploadedAt: Date.now(),
-      category: args.category,
+      category: "special_reports",
       presenterUserId: args.presenterUserId,
     });
   },
@@ -202,6 +200,7 @@ export const list = query({
         const category = resource.category
           ?? (eventType === "corporate_market_update" ? "market_corporate"
             : eventType === "workshop" ? "workshop"
+            : eventType === "regional" ? "regional_reports"
             : "market_corporate");
 
         return {

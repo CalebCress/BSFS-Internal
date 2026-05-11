@@ -140,6 +140,7 @@ export default defineSchema({
     eventType: v.optional(v.union(
       v.literal("corporate_market_update"),
       v.literal("workshop"),
+      v.literal("regional"),
       v.literal("other"),
     )),
     corporateAssignee: v.optional(v.id("users")),
@@ -249,4 +250,60 @@ export default defineSchema({
   })
     .index("by_stock", ["stockId"])
     .index("by_user", ["userId"]),
+
+  // Internship listings (cached from the-trackr API + user-added)
+  internshipProgrammes: defineTable({
+    source: v.union(v.literal("trackr"), v.literal("user")),
+    externalId: v.optional(v.string()),
+    addedBy: v.optional(v.id("users")),
+    name: v.string(),
+    companyName: v.string(),
+    companyId: v.optional(v.string()),
+    companyDescription: v.optional(v.string()),
+    url: v.string(),
+    region: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    season: v.string(),
+    type: v.optional(v.string()),
+    categories: v.array(v.string()),
+    locations: v.array(v.string()),
+    process: v.optional(v.string()),
+    openingDate: v.optional(v.number()),
+    closingDate: v.optional(v.number()),
+    currentStage: v.optional(v.string()),
+    rolling: v.optional(v.boolean()),
+    requiresCv: v.optional(v.boolean()),
+    coverLetter: v.optional(v.string()),
+    writtenAnswers: v.optional(v.string()),
+    sponsorsVisa: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    lastSyncedAt: v.optional(v.number()),
+  })
+    .index("by_externalId", ["externalId"])
+    .index("by_source", ["source"])
+    .index("by_addedBy", ["addedBy"])
+    .index("by_season", ["season"]),
+
+  // Per-user application progress on an internship
+  internshipProgress: defineTable({
+    userId: v.id("users"),
+    programmeId: v.id("internshipProgrammes"),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("applied"),
+      v.literal("online_assessment"),
+      v.literal("hirevue"),
+      v.literal("technical_interview"),
+      v.literal("assessment_centre"),
+      v.literal("final"),
+      v.literal("offer"),
+      v.literal("rejected"),
+      v.literal("withdrew"),
+    ),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_programme", ["programmeId"])
+    .index("by_user_programme", ["userId", "programmeId"]),
 });

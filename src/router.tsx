@@ -18,6 +18,7 @@ import { RegionalReportsPage } from "./pages/resources/RegionalReportsPage";
 import { SpecialReportsPage } from "./pages/resources/SpecialReportsPage";
 import { CvReviewPage } from "./pages/careers/CvReviewPage";
 import { ReviewQueuePage } from "./pages/careers/ReviewQueuePage";
+import { InternshipTrackerPage } from "./pages/careers/InternshipTrackerPage";
 import { PublicApplicationPage } from "./pages/public/PublicApplicationPage";
 import { ProfileSetupPage } from "./pages/ProfileSetupPage";
 import { PendingApprovalPage } from "./pages/PendingApprovalPage";
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
       { path: "resources/interview-prep", element: <InterviewPrepPage /> },
       { path: "careers/cv-review", element: <RequireAccess check="member"><CvReviewPage /></RequireAccess> },
       { path: "careers/review-queue", element: <RequireAccess check="cv_reviewer"><ReviewQueuePage /></RequireAccess> },
+      { path: "careers/internship-tracker", element: <RequireAccess check="member"><InternshipTrackerPage /></RequireAccess> },
     ],
   },
 ]);

@@ -287,6 +287,7 @@ export function MemberProfilePage() {
               cvUrl: profile.cvUrl,
               jobTitle: profile.jobTitle,
               company: profile.company,
+              phoneNumber: profile.phoneNumber,
             }}
           />
           <ChangePasswordDialog

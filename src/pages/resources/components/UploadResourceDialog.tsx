@@ -32,7 +32,7 @@ import { toast } from "sonner";
 interface UploadResourceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  eventType: "corporate_market_update" | "workshop";
+  eventType: "corporate_market_update" | "workshop" | "regional";
 }
 
 export function UploadResourceDialog({
@@ -60,6 +60,14 @@ export function UploadResourceDialog({
 
   const allMembers = profiles ?? [];
   const isCMU = eventType === "corporate_market_update";
+  const isRegional = eventType === "regional";
+  const usesSinglePresenter = isRegional;
+  const dialogTitle =
+    eventType === "corporate_market_update"
+      ? "Upload Market & Corporate Update"
+      : eventType === "regional"
+        ? "Upload Regional Report"
+        : "Upload Workshop";
 
   const reset = () => {
     setTitle("");
@@ -101,7 +109,7 @@ export function UploadResourceDialog({
         eventType,
         isCorporateMarketUpdate: isCMU || undefined,
         corporateAssignee:
-          isCMU && corporateAssignee
+          (isCMU || isRegional) && corporateAssignee
             ? (corporateAssignee as Id<"users">)
             : undefined,
         marketAssignee:
@@ -157,9 +165,7 @@ export function UploadResourceDialog({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            Upload {isCMU ? "Market & Corporate Update" : "Workshop"}
-          </DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
             Upload a past event presentation. This will also create the event
             in the calendar.
@@ -217,10 +223,10 @@ export function UploadResourceDialog({
             />
           </div>
 
-          {isCMU && (
-            <div className="grid grid-cols-2 gap-3">
+          {(isCMU || usesSinglePresenter) && (
+            <div className={cn(isCMU ? "grid grid-cols-2 gap-3" : "")}>
               <div className="space-y-2">
-                <Label>Corporate Presenter</Label>
+                <Label>{usesSinglePresenter ? "Presenter" : "Corporate Presenter"}</Label>
                 <Popover
                   open={corporatePopoverOpen}
                   onOpenChange={setCorporatePopoverOpen}
@@ -276,6 +282,7 @@ export function UploadResourceDialog({
                   </PopoverContent>
                 </Popover>
               </div>
+              {isCMU && (
               <div className="space-y-2">
                 <Label>Market Presenter</Label>
                 <Popover
@@ -332,6 +339,7 @@ export function UploadResourceDialog({
                   </PopoverContent>
                 </Popover>
               </div>
+              )}
             </div>
           )}
 

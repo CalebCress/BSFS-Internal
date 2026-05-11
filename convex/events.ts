@@ -29,6 +29,7 @@ export const create = mutation({
     eventType: v.optional(v.union(
       v.literal("corporate_market_update"),
       v.literal("workshop"),
+      v.literal("regional"),
       v.literal("other"),
     )),
     corporateAssignee: v.optional(v.id("users")),
@@ -39,6 +40,7 @@ export const create = mutation({
     const userId = await requireAdmin(ctx);
 
     const isCMU = args.eventType === "corporate_market_update" || args.isCorporateMarketUpdate;
+    const isRegional = args.eventType === "regional";
     // Auto-set mandatory attendance for Corporate & Market Updates
     const mandatory = isCMU ? true : args.mandatoryAttendance;
 
@@ -52,7 +54,7 @@ export const create = mutation({
       createdBy: userId,
       isCorporateMarketUpdate: isCMU || undefined,
       eventType: args.eventType,
-      corporateAssignee: isCMU
+      corporateAssignee: (isCMU || isRegional)
         ? args.corporateAssignee
         : undefined,
       marketAssignee: isCMU
@@ -76,6 +78,7 @@ export const createRecurring = mutation({
     eventType: v.optional(v.union(
       v.literal("corporate_market_update"),
       v.literal("workshop"),
+      v.literal("regional"),
       v.literal("other"),
     )),
     mandatoryAttendance: v.optional(v.boolean()),
@@ -203,6 +206,7 @@ export const update = mutation({
     eventType: v.optional(v.union(
       v.literal("corporate_market_update"),
       v.literal("workshop"),
+      v.literal("regional"),
       v.literal("other"),
     )),
     corporateAssignee: v.optional(v.id("users")),
@@ -226,12 +230,16 @@ export const update = mutation({
     if (args.eventType !== undefined) {
       updates.eventType = args.eventType;
       const isCMU = args.eventType === "corporate_market_update";
+      const isRegional = args.eventType === "regional";
       updates.isCorporateMarketUpdate = isCMU || undefined;
       if (isCMU) {
         updates.mandatoryAttendance = true;
-      } else {
-        // Clear assignees when not C&M Update
+      }
+      if (!isCMU && !isRegional) {
+        // Clear assignees when type doesn't use them
         updates.corporateAssignee = undefined;
+      }
+      if (!isCMU) {
         updates.marketAssignee = undefined;
       }
     } else if (args.isCorporateMarketUpdate !== undefined) {

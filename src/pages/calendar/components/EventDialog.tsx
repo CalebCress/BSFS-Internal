@@ -37,7 +37,7 @@ import { ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type EventType = "corporate_market_update" | "workshop" | "other";
+type EventType = "corporate_market_update" | "workshop" | "regional" | "other";
 
 interface EventData {
   _id: Id<"events">;
@@ -75,6 +75,7 @@ const EVENT_TYPES = [
   { value: "other", label: "Other" },
   { value: "corporate_market_update", label: "Market & Corporate Update" },
   { value: "workshop", label: "Workshop" },
+  { value: "regional", label: "Regional Report" },
 ] as const;
 
 export function EventDialog({
@@ -106,6 +107,8 @@ export function EventDialog({
 
   const isEditing = !!editingEvent;
   const isCorporateMarketUpdate = eventType === "corporate_market_update";
+  const isRegional = eventType === "regional";
+  const usesPresenter = isCorporateMarketUpdate || isRegional;
 
   // All approved members for assignment dropdowns
   const allMembers = profiles ?? [];
@@ -166,7 +169,7 @@ export function EventDialog({
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
           mandatoryAttendance,
           corporateAssignee:
-            isCorporateMarketUpdate && corporateAssignee
+            usesPresenter && corporateAssignee
               ? (corporateAssignee as Id<"users">)
               : undefined,
           marketAssignee:
@@ -211,7 +214,7 @@ export function EventDialog({
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
           mandatoryAttendance: mandatoryAttendance || undefined,
           corporateAssignee:
-            isCorporateMarketUpdate && corporateAssignee
+            usesPresenter && corporateAssignee
               ? (corporateAssignee as Id<"users">)
               : undefined,
           marketAssignee:
@@ -417,11 +420,11 @@ export function EventDialog({
             </Label>
           </div>
 
-          {/* Member assignment dropdowns (shown when C&M checked and NOT recurring create) */}
-          {isCorporateMarketUpdate && !(recurring && !isEditing) && (
-            <div className="grid grid-cols-2 gap-3">
+          {/* Member assignment dropdowns (shown when type uses presenter and NOT recurring create) */}
+          {usesPresenter && !(recurring && !isEditing) && (
+            <div className={cn(isCorporateMarketUpdate ? "grid grid-cols-2 gap-3" : "")}>
               <div className="space-y-2">
-                <Label>Corporate Presenter</Label>
+                <Label>{isRegional ? "Presenter" : "Corporate Presenter"}</Label>
                 <Popover open={corporatePopoverOpen} onOpenChange={setCorporatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -468,6 +471,7 @@ export function EventDialog({
                   </PopoverContent>
                 </Popover>
               </div>
+              {isCorporateMarketUpdate && (
               <div className="space-y-2">
                 <Label>Market Presenter</Label>
                 <Popover open={marketPopoverOpen} onOpenChange={setMarketPopoverOpen}>
@@ -516,6 +520,7 @@ export function EventDialog({
                   </PopoverContent>
                 </Popover>
               </div>
+              )}
             </div>
           )}
 

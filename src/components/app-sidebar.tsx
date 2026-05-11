@@ -43,6 +43,7 @@ const stockSubItems = [
 const careerSubItems = [
   { title: "CV Review", path: "/careers/cv-review" },
   { title: "Reviews To Do", path: "/careers/review-queue", cvReviewerOnly: true },
+  { title: "Internship Tracker", path: "/careers/internship-tracker" },
 ];
 
 const resourceSubItems = [

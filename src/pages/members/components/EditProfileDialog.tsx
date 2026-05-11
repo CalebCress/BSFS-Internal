@@ -34,6 +34,7 @@ interface EditProfileDialogProps {
     cvUrl?: string | null;
     jobTitle?: string;
     company?: string;
+    phoneNumber?: string;
   };
 }
 
@@ -51,6 +52,7 @@ export function EditProfileDialog({
   const [jobTitle, setJobTitle] = useState(profile.jobTitle ?? "");
   const [company, setCompany] = useState(profile.company ?? "");
   const [linkedIn, setLinkedIn] = useState(profile.linkedIn ?? "");
+  const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber ?? "");
   const [photoStorageId, setPhotoStorageId] = useState<
     Id<"_storage"> | undefined
   >(profile.photoStorageId);
@@ -74,6 +76,7 @@ export function EditProfileDialog({
       setJobTitle(profile.jobTitle ?? "");
       setCompany(profile.company ?? "");
       setLinkedIn(profile.linkedIn ?? "");
+      setPhoneNumber(profile.phoneNumber ?? "");
       setPhotoStorageId(profile.photoStorageId);
       setCvStorageId(profile.cvStorageId);
       setPhotoPreview(profile.photoUrl ?? null);
@@ -144,6 +147,7 @@ export function EditProfileDialog({
         cvStorageId,
         jobTitle: jobTitle.trim() || undefined,
         company: company.trim() || undefined,
+        phoneNumber: phoneNumber.trim() || undefined,
       });
       toast.success("Profile updated");
       onOpenChange(false);
@@ -260,6 +264,17 @@ export function EditProfileDialog({
               value={linkedIn}
               onChange={(e) => setLinkedIn(e.target.value)}
               placeholder="https://linkedin.com/in/yourprofile"
+            />
+          </div>
+
+          {/* Phone Number */}
+          <div className="space-y-2">
+            <Label>Phone Number</Label>
+            <Input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+44 7123 456789"
             />
           </div>
 

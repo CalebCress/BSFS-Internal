@@ -70,7 +70,6 @@ export function SpecialReportsPage() {
       <UploadReportDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        category="special_reports"
       />
     </div>
   );
