@@ -61,7 +61,7 @@ export function UploadResourceDialog({
   const allMembers = profiles ?? [];
   const isCMU = eventType === "corporate_market_update";
   const isRegional = eventType === "regional";
-  const usesSinglePresenter = isRegional;
+  const usesTwoPresenters = isCMU || isRegional;
   const dialogTitle =
     eventType === "corporate_market_update"
       ? "Upload Market & Corporate Update"
@@ -109,11 +109,11 @@ export function UploadResourceDialog({
         eventType,
         isCorporateMarketUpdate: isCMU || undefined,
         corporateAssignee:
-          (isCMU || isRegional) && corporateAssignee
+          usesTwoPresenters && corporateAssignee
             ? (corporateAssignee as Id<"users">)
             : undefined,
         marketAssignee:
-          isCMU && marketAssignee
+          usesTwoPresenters && marketAssignee
             ? (marketAssignee as Id<"users">)
             : undefined,
       });
@@ -223,10 +223,10 @@ export function UploadResourceDialog({
             />
           </div>
 
-          {(isCMU || usesSinglePresenter) && (
-            <div className={cn(isCMU ? "grid grid-cols-2 gap-3" : "")}>
+          {usesTwoPresenters && (
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>{usesSinglePresenter ? "Presenter" : "Corporate Presenter"}</Label>
+                <Label>{isRegional ? "Presenter 1" : "Corporate Presenter"}</Label>
                 <Popover
                   open={corporatePopoverOpen}
                   onOpenChange={setCorporatePopoverOpen}
@@ -282,9 +282,8 @@ export function UploadResourceDialog({
                   </PopoverContent>
                 </Popover>
               </div>
-              {isCMU && (
               <div className="space-y-2">
-                <Label>Market Presenter</Label>
+                <Label>{isRegional ? "Presenter 2" : "Market Presenter"}</Label>
                 <Popover
                   open={marketPopoverOpen}
                   onOpenChange={setMarketPopoverOpen}
@@ -339,7 +338,6 @@ export function UploadResourceDialog({
                   </PopoverContent>
                 </Popover>
               </div>
-              )}
             </div>
           )}
 

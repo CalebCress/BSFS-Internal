@@ -524,7 +524,7 @@ export function CalendarPage() {
                           Regional Report
                         </Badge>
                         <div className="text-sm text-muted-foreground">
-                          <span className="font-medium">Presenter:</span>{" "}
+                          <span className="font-medium">Presenters:</span>{" "}
                           {event.corporateAssigneeName && event.corporateAssignee ? (
                             <button
                               className="underline underline-offset-2 hover:text-foreground transition-colors"
@@ -535,9 +535,23 @@ export function CalendarPage() {
                             >
                               {event.corporateAssigneeName}
                             </button>
-                          ) : (
-                            "Unassigned"
-                          )}
+                          ) : null}
+                          {event.corporateAssigneeName &&
+                            event.marketAssigneeName && <span> & </span>}
+                          {event.marketAssigneeName && event.marketAssignee ? (
+                            <button
+                              className="underline underline-offset-2 hover:text-foreground transition-colors"
+                              onClick={() => {
+                                setDayDialogOpen(false);
+                                navigate(`/members/${event.marketAssignee}`);
+                              }}
+                            >
+                              {event.marketAssigneeName}
+                            </button>
+                          ) : null}
+                          {!event.corporateAssigneeName &&
+                            !event.marketAssigneeName &&
+                            "Unassigned"}
                         </div>
                         {hasAdminAccess && (
                           <PresentationUpload eventId={event._id} />

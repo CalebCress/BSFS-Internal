@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -89,8 +89,23 @@ const STATUS_COLOUR: Record<Status, string> = {
 function currentTrackrSeason(now: Date = new Date()): string {
   const month = now.getUTCMonth();
   const year = now.getUTCFullYear();
-  return month >= 5 ? String(year + 1) : String(year);
+  return month >= 4 ? String(year + 1) : String(year);
 }
+
+type ProgrammeType = "summer-internships" | "spring-weeks";
+
+const PROGRAMME_TYPE_STORAGE_KEY = "bsfs_internship_programme_type";
+
+function loadProgrammeType(): ProgrammeType {
+  if (typeof window === "undefined") return "summer-internships";
+  const v = window.localStorage.getItem(PROGRAMME_TYPE_STORAGE_KEY);
+  return v === "spring-weeks" ? "spring-weeks" : "summer-internships";
+}
+
+const PROGRAMME_TYPE_LABEL: Record<ProgrammeType, string> = {
+  "summer-internships": "summer internships",
+  "spring-weeks": "spring weeks",
+};
 
 function formatDeadline(ts: number | undefined): string | null {
   if (!ts) return null;
@@ -120,7 +135,14 @@ function renderCoverLetter(value: string | undefined | null): string | null {
 export function InternshipTrackerPage() {
   const season = currentTrackrSeason();
   const { profile, hasAdminAccess } = useCurrentProfile();
-  const programmes = useQuery(api.internships.list, { season });
+  const [programmeType, setProgrammeType] = useState<ProgrammeType>(() =>
+    loadProgrammeType(),
+  );
+  useEffect(() => {
+    window.localStorage.setItem(PROGRAMME_TYPE_STORAGE_KEY, programmeType);
+  }, [programmeType]);
+
+  const programmes = useQuery(api.internships.list, { season, programmeType });
   const setProgress = useMutation(api.internships.setProgress);
   const deleteInternship = useMutation(api.internships.deleteUserInternship);
   const refreshTrackr = useAction(api.internshipsSync.refresh);
@@ -130,6 +152,8 @@ export function InternshipTrackerPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | "trackr" | "user">("all");
   const [openOnly, setOpenOnly] = useState(false);
+  const [hasLinkOnly, setHasLinkOnly] = useState(false);
+  const [noCoverLetterOnly, setNoCoverLetterOnly] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<InternshipFormInitial | null>(null);
@@ -157,6 +181,10 @@ export function InternshipTrackerPage() {
           return false;
         }
         if (openOnly && !isOpen(now, p.openingDate, p.closingDate)) return false;
+        if (hasLinkOnly && !p.url) return false;
+        if (noCoverLetterOnly && renderCoverLetter(p.coverLetter) === "Required") {
+          return false;
+        }
         if (q) {
           const haystack = `${p.name} ${p.companyName} ${p.categories.join(" ")} ${p.locations.join(" ")}`.toLowerCase();
           if (!haystack.includes(q)) return false;
@@ -172,7 +200,17 @@ export function InternshipTrackerPage() {
         const bDl = b.closingDate ?? Number.POSITIVE_INFINITY;
         return aDl - bDl;
       });
-  }, [programmes, search, sourceFilter, statusFilter, categoryFilter, openOnly, now]);
+  }, [
+    programmes,
+    search,
+    sourceFilter,
+    statusFilter,
+    categoryFilter,
+    openOnly,
+    hasLinkOnly,
+    noCoverLetterOnly,
+    now,
+  ]);
 
   const handleSetProgress = async (programmeId: Id<"internshipProgrammes">, status: Status) => {
     try {
@@ -185,8 +223,10 @@ export function InternshipTrackerPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const res = await refreshTrackr({ season });
-      toast.success(`Synced ${res.count} listings for ${season}`);
+      const res = await refreshTrackr({ season, programmeType });
+      toast.success(
+        `Synced ${res.count} ${PROGRAMME_TYPE_LABEL[programmeType]} for ${season}`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Refresh failed");
     } finally {
@@ -214,10 +254,28 @@ export function InternshipTrackerPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Internship Tracker</h1>
           <p className="text-muted-foreground">
-            UK Finance summer internships for {season}. Track your application progress per role.
+            UK Finance {PROGRAMME_TYPE_LABEL[programmeType]} for {season}. Track your application progress per role.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ToggleGroup
+            type="single"
+            value={programmeType}
+            onValueChange={(v) => {
+              if (v === "summer-internships" || v === "spring-weeks") {
+                setProgrammeType(v);
+              }
+            }}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="spring-weeks" aria-label="Spring weeks">
+              Spring
+            </ToggleGroupItem>
+            <ToggleGroupItem value="summer-internships" aria-label="Summer internships">
+              Summer
+            </ToggleGroupItem>
+          </ToggleGroup>
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -312,15 +370,35 @@ export function InternshipTrackerPage() {
               </SelectContent>
             </Select>
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={openOnly}
-              onChange={(e) => setOpenOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
-            />
-            Open applications only
-          </label>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={openOnly}
+                onChange={(e) => setOpenOnly(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              Open applications only
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={hasLinkOnly}
+                onChange={(e) => setHasLinkOnly(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              Has a link
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={noCoverLetterOnly}
+                onChange={(e) => setNoCoverLetterOnly(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              Cover letter not required
+            </label>
+          </div>
         </CardContent>
       </Card>
 
@@ -438,12 +516,24 @@ export function InternshipTrackerPage() {
 
             const actionButtons = (
               <div className="flex gap-2">
-                <Button asChild variant="outline" size="sm" className="flex-1">
-                  <a href={p.url} target="_blank" rel="noopener noreferrer">
+                {p.url ? (
+                  <Button asChild variant="outline" size="sm" className="flex-1">
+                    <a href={p.url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                      Apply
+                    </a>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    disabled
+                  >
                     <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                    Apply
-                  </a>
-                </Button>
+                    No link yet
+                  </Button>
+                )}
                 {canEdit && (
                   <>
                     <Button
@@ -454,13 +544,17 @@ export function InternshipTrackerPage() {
                           programmeId: p._id,
                           name: p.name,
                           companyName: p.companyName,
-                          url: p.url,
+                          url: p.url ?? "",
                           categories: p.categories,
                           locations: p.locations,
                           closingDate: p.closingDate,
                           openingDate: p.openingDate,
                           notes: p.notes ?? undefined,
                           season: p.season,
+                          programmeType:
+                            p.type === "spring-weeks"
+                              ? "spring-weeks"
+                              : "summer-internships",
                         });
                         setFormOpen(true);
                       }}
@@ -561,21 +655,33 @@ export function InternshipTrackerPage() {
                         </SelectContent>
                       </Select>
                       <div className="flex gap-1.5">
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="h-8 flex-1 text-xs"
-                        >
-                          <a
-                            href={p.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {p.url ? (
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="h-8 flex-1 text-xs"
+                          >
+                            <a
+                              href={p.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="mr-1 h-3 w-3" />
+                              Apply
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 flex-1 text-xs"
+                            disabled
                           >
                             <ExternalLink className="mr-1 h-3 w-3" />
-                            Apply
-                          </a>
-                        </Button>
+                            No link yet
+                          </Button>
+                        )}
                         {canEdit && (
                           <>
                             <Button
@@ -587,7 +693,7 @@ export function InternshipTrackerPage() {
                                   programmeId: p._id,
                                   name: p.name,
                                   companyName: p.companyName,
-                                  url: p.url,
+                                  url: p.url ?? "",
                                   categories: p.categories,
                                   locations: p.locations,
                                   closingDate: p.closingDate,
@@ -649,6 +755,7 @@ export function InternshipTrackerPage() {
         }}
         initial={editing}
         defaultSeason={season}
+        defaultProgrammeType={programmeType}
         existingCategories={allCategories}
       />
 

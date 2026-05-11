@@ -17,11 +17,16 @@ const STATUS_VALIDATOR = v.union(
   v.literal("withdrew"),
 );
 
-// In May we look for the current year's summer; from June onward we look one year ahead.
+const PROGRAMME_TYPE_VALIDATOR = v.union(
+  v.literal("summer-internships"),
+  v.literal("spring-weeks"),
+);
+
+// Before May we look for the current year's season; from May onward we look one year ahead.
 export function currentTrackrSeason(now: Date = new Date()): string {
-  const month = now.getUTCMonth(); // 0 = Jan, 5 = Jun
+  const month = now.getUTCMonth(); // 0 = Jan, 4 = May
   const year = now.getUTCFullYear();
-  return month >= 5 ? String(year + 1) : String(year);
+  return month >= 4 ? String(year + 1) : String(year);
 }
 
 async function getProfile(ctx: any, userId: Id<"users">) {
@@ -32,17 +37,28 @@ async function getProfile(ctx: any, userId: Id<"users">) {
 }
 
 export const list = query({
-  args: { season: v.optional(v.string()) },
+  args: {
+    season: v.optional(v.string()),
+    programmeType: v.optional(PROGRAMME_TYPE_VALIDATOR),
+  },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
     const season = args.season ?? currentTrackrSeason();
+    const programmeType = args.programmeType ?? "summer-internships";
 
     const programmes = await ctx.db
       .query("internshipProgrammes")
       .withIndex("by_season", (q) => q.eq("season", season))
       .collect();
+
+    // Pre-existing user-added rows may have type "summer-internships" set
+    // explicitly; treat anything missing/unknown as summer for back-compat.
+    const filtered = programmes.filter((p) => {
+      const t = p.type ?? "summer-internships";
+      return t === programmeType;
+    });
 
     const myProgress = await ctx.db
       .query("internshipProgress")
@@ -53,7 +69,7 @@ export const list = query({
       progressByProgramme.set(p.programmeId, p);
     }
 
-    return programmes.map((p) => {
+    return filtered.map((p) => {
       const prog = progressByProgramme.get(p._id);
       return {
         ...p,
@@ -109,6 +125,7 @@ export const addUserInternship = mutation({
     companyName: v.string(),
     url: v.string(),
     season: v.optional(v.string()),
+    programmeType: v.optional(PROGRAMME_TYPE_VALIDATOR),
     categories: v.optional(v.array(v.string())),
     locations: v.optional(v.array(v.string())),
     closingDate: v.optional(v.number()),
@@ -140,7 +157,7 @@ export const addUserInternship = mutation({
       notes: args.notes?.trim() || undefined,
       region: "UK",
       industry: "Finance",
-      type: "summer-internships",
+      type: args.programmeType ?? "summer-internships",
     });
   },
 });
@@ -152,6 +169,7 @@ export const updateUserInternship = mutation({
     companyName: v.string(),
     url: v.string(),
     season: v.optional(v.string()),
+    programmeType: v.optional(PROGRAMME_TYPE_VALIDATOR),
     categories: v.optional(v.array(v.string())),
     locations: v.optional(v.array(v.string())),
     closingDate: v.optional(v.number()),
@@ -179,6 +197,7 @@ export const updateUserInternship = mutation({
       companyName: args.companyName.trim(),
       url: args.url.trim(),
       season: args.season ?? programme.season,
+      type: args.programmeType ?? programme.type,
       categories: args.categories ?? programme.categories,
       locations: args.locations ?? programme.locations,
       closingDate: args.closingDate,
@@ -223,6 +242,10 @@ export const deleteUserInternship = mutation({
 export const upsertTrackrProgrammes = internalMutation({
   args: {
     season: v.string(),
+    programmeType: v.union(
+      v.literal("summer-internships"),
+      v.literal("spring-weeks"),
+    ),
     programmes: v.array(
       v.object({
         externalId: v.string(),
@@ -230,7 +253,7 @@ export const upsertTrackrProgrammes = internalMutation({
         companyName: v.string(),
         companyId: v.optional(v.string()),
         companyDescription: v.optional(v.string()),
-        url: v.string(),
+        url: v.optional(v.string()),
         region: v.optional(v.string()),
         industry: v.optional(v.string()),
         type: v.optional(v.string()),
@@ -270,7 +293,7 @@ export const upsertTrackrProgrammes = internalMutation({
         region: p.region,
         industry: p.industry,
         season: args.season,
-        type: p.type,
+        type: args.programmeType,
         categories: p.categories,
         locations: p.locations,
         process: p.process,
@@ -292,7 +315,9 @@ export const upsertTrackrProgrammes = internalMutation({
       }
     }
 
-    // Sweep: remove trackr programmes for this season that no longer appear in the API
+    // Sweep: remove trackr programmes for this (season + type) that no longer
+    // appear in the API. Scope by type so syncing spring-weeks doesn't wipe
+    // summer-internships.
     const seasonProgrammes = await ctx.db
       .query("internshipProgrammes")
       .withIndex("by_season", (q) => q.eq("season", args.season))
@@ -300,6 +325,7 @@ export const upsertTrackrProgrammes = internalMutation({
     for (const existing of seasonProgrammes) {
       if (
         existing.source === "trackr" &&
+        existing.type === args.programmeType &&
         existing.externalId &&
         !seenExternalIds.has(existing.externalId)
       ) {

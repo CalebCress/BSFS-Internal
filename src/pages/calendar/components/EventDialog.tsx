@@ -173,7 +173,7 @@ export function EventDialog({
               ? (corporateAssignee as Id<"users">)
               : undefined,
           marketAssignee:
-            isCorporateMarketUpdate && marketAssignee
+            usesPresenter && marketAssignee
               ? (marketAssignee as Id<"users">)
               : undefined,
         });
@@ -218,7 +218,7 @@ export function EventDialog({
               ? (corporateAssignee as Id<"users">)
               : undefined,
           marketAssignee:
-            isCorporateMarketUpdate && marketAssignee
+            usesPresenter && marketAssignee
               ? (marketAssignee as Id<"users">)
               : undefined,
         });
@@ -422,9 +422,9 @@ export function EventDialog({
 
           {/* Member assignment dropdowns (shown when type uses presenter and NOT recurring create) */}
           {usesPresenter && !(recurring && !isEditing) && (
-            <div className={cn(isCorporateMarketUpdate ? "grid grid-cols-2 gap-3" : "")}>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>{isRegional ? "Presenter" : "Corporate Presenter"}</Label>
+                <Label>{isRegional ? "Presenter 1" : "Corporate Presenter"}</Label>
                 <Popover open={corporatePopoverOpen} onOpenChange={setCorporatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -471,9 +471,8 @@ export function EventDialog({
                   </PopoverContent>
                 </Popover>
               </div>
-              {isCorporateMarketUpdate && (
               <div className="space-y-2">
-                <Label>Market Presenter</Label>
+                <Label>{isRegional ? "Presenter 2" : "Market Presenter"}</Label>
                 <Popover open={marketPopoverOpen} onOpenChange={setMarketPopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -520,7 +519,6 @@ export function EventDialog({
                   </PopoverContent>
                 </Popover>
               </div>
-              )}
             </div>
           )}
 

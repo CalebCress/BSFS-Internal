@@ -31,6 +31,8 @@ import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+type ProgrammeType = "summer-internships" | "spring-weeks";
+
 export interface InternshipFormInitial {
   programmeId: Id<"internshipProgrammes">;
   name: string;
@@ -42,6 +44,7 @@ export interface InternshipFormInitial {
   openingDate?: number;
   notes?: string;
   season: string;
+  programmeType?: ProgrammeType;
 }
 
 interface Props {
@@ -49,6 +52,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   initial?: InternshipFormInitial | null;
   defaultSeason: string;
+  defaultProgrammeType: ProgrammeType;
   existingCategories: string[];
 }
 
@@ -72,6 +76,7 @@ export function InternshipFormDialog({
   onOpenChange,
   initial,
   defaultSeason,
+  defaultProgrammeType,
   existingCategories,
 }: Props) {
   const addInternship = useMutation(api.internships.addUserInternship);
@@ -162,11 +167,16 @@ export function InternshipFormDialog({
         await updateInternship({
           programmeId: initial.programmeId,
           season: initial.season,
+          programmeType: initial.programmeType ?? defaultProgrammeType,
           ...payload,
         });
         toast.success("Internship updated");
       } else {
-        await addInternship({ season: defaultSeason, ...payload });
+        await addInternship({
+          season: defaultSeason,
+          programmeType: defaultProgrammeType,
+          ...payload,
+        });
         toast.success("Internship added");
       }
       onOpenChange(false);

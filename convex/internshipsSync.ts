@@ -7,6 +7,13 @@ import { currentTrackrSeason } from "./internships";
 
 const BASE_URL = "https://api.the-trackr.com";
 
+const PROGRAMME_TYPE_VALIDATOR = v.union(
+  v.literal("summer-internships"),
+  v.literal("spring-weeks"),
+);
+
+type ProgrammeType = "summer-internships" | "spring-weeks";
+
 interface TrackrCompany {
   id?: string;
   name?: string;
@@ -41,12 +48,15 @@ function parseDate(value: string | null | undefined): number | undefined {
   return Number.isNaN(ts) ? undefined : ts;
 }
 
-async function fetchSeason(season: string): Promise<TrackrProgramme[]> {
+async function fetchSeason(
+  season: string,
+  programmeType: ProgrammeType,
+): Promise<TrackrProgramme[]> {
   const params = new URLSearchParams({
     region: "UK",
     industry: "Finance",
     season,
-    type: "summer-internships",
+    type: programmeType,
   });
   const url = `${BASE_URL}/programmes?${params.toString()}`;
   const res = await fetch(url);
@@ -58,8 +68,10 @@ async function fetchSeason(season: string): Promise<TrackrProgramme[]> {
 }
 
 function normalise(p: TrackrProgramme) {
-  // Drop entries that lack the fields we treat as required.
-  if (!p.id || !p.name || !p.url) return null;
+  // Drop entries that lack the fields we treat as required. URL is often null
+  // on Trackr (esp. for upcoming seasons before application portals open), so
+  // we accept rows without one and surface them as "no link yet" in the UI.
+  if (!p.id || !p.name) return null;
 
   return {
     externalId: p.id,
@@ -67,7 +79,7 @@ function normalise(p: TrackrProgramme) {
     companyName: p.company?.name ?? p.companyId ?? "Unknown",
     companyId: p.companyId ?? undefined,
     companyDescription: p.company?.description ?? undefined,
-    url: p.url,
+    url: p.url ?? undefined,
     region: p.region ?? undefined,
     industry: p.industry ?? undefined,
     type: p.type ?? undefined,
@@ -95,30 +107,42 @@ function normaliseAll(programmes: TrackrProgramme[]): NormalisedProgramme[] {
 
 // Manual refresh — callable from the UI as a "refresh" affordance.
 export const refresh = action({
-  args: { season: v.optional(v.string()) },
+  args: {
+    season: v.optional(v.string()),
+    programmeType: v.optional(PROGRAMME_TYPE_VALIDATOR),
+  },
   handler: async (ctx, args) => {
     const season = args.season ?? currentTrackrSeason();
-    const programmes = await fetchSeason(season);
+    const programmeType: ProgrammeType = args.programmeType ?? "summer-internships";
+    const programmes = await fetchSeason(season, programmeType);
     const normalised = normaliseAll(programmes);
     await ctx.runMutation(internal.internships.upsertTrackrProgrammes, {
       season,
+      programmeType,
       programmes: normalised,
     });
-    return { season, count: normalised.length };
+    return { season, programmeType, count: normalised.length };
   },
 });
 
-// Cron entrypoint: refreshes the current season once per day.
+// Cron entrypoint: refreshes the current season once per day for both
+// spring-weeks and summer-internships.
 export const dailySync = internalAction({
   args: {},
   handler: async (ctx) => {
     const season = currentTrackrSeason();
-    const programmes = await fetchSeason(season);
-    const normalised = normaliseAll(programmes);
-    await ctx.runMutation(internal.internships.upsertTrackrProgrammes, {
-      season,
-      programmes: normalised,
-    });
-    return { season, count: normalised.length };
+    const types: ProgrammeType[] = ["summer-internships", "spring-weeks"];
+    const results: { programmeType: ProgrammeType; count: number }[] = [];
+    for (const programmeType of types) {
+      const programmes = await fetchSeason(season, programmeType);
+      const normalised = normaliseAll(programmes);
+      await ctx.runMutation(internal.internships.upsertTrackrProgrammes, {
+        season,
+        programmeType,
+        programmes: normalised,
+      });
+      results.push({ programmeType, count: normalised.length });
+    }
+    return { season, results };
   },
 });

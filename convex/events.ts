@@ -57,7 +57,7 @@ export const create = mutation({
       corporateAssignee: (isCMU || isRegional)
         ? args.corporateAssignee
         : undefined,
-      marketAssignee: isCMU
+      marketAssignee: (isCMU || isRegional)
         ? args.marketAssignee
         : undefined,
       mandatoryAttendance: mandatory,
@@ -238,8 +238,6 @@ export const update = mutation({
       if (!isCMU && !isRegional) {
         // Clear assignees when type doesn't use them
         updates.corporateAssignee = undefined;
-      }
-      if (!isCMU) {
         updates.marketAssignee = undefined;
       }
     } else if (args.isCorporateMarketUpdate !== undefined) {

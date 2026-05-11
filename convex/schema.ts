@@ -260,7 +260,7 @@ export default defineSchema({
     companyName: v.string(),
     companyId: v.optional(v.string()),
     companyDescription: v.optional(v.string()),
-    url: v.string(),
+    url: v.optional(v.string()),
     region: v.optional(v.string()),
     industry: v.optional(v.string()),
     season: v.string(),
