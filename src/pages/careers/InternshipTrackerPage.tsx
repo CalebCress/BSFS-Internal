@@ -446,6 +446,7 @@ export function InternshipTrackerPage() {
         >
           {filtered.map((p) => {
             const status = p.myStatus as Status;
+            const opens = formatDeadline(p.openingDate);
             const deadline = formatDeadline(p.closingDate);
             const open = isOpen(now, p.openingDate, p.closingDate);
             const canEdit =
@@ -489,9 +490,14 @@ export function InternshipTrackerPage() {
 
             const metaBlock = (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {opens && (
+                  <span>
+                    Opens: <span className="font-medium text-foreground">{opens}</span>
+                  </span>
+                )}
                 {deadline && (
                   <span>
-                    Deadline: <span className="font-medium text-foreground">{deadline}</span>
+                    Closes: <span className="font-medium text-foreground">{deadline}</span>
                     {p.rolling ? " (rolling)" : ""}
                   </span>
                 )}
@@ -629,9 +635,14 @@ export function InternshipTrackerPage() {
                     )}
 
                     <div className="space-y-0.5 text-[11px] text-muted-foreground">
+                      {opens && (
+                        <div>
+                          Opens: <span className="font-medium text-foreground">{opens}</span>
+                        </div>
+                      )}
                       {deadline && (
                         <div>
-                          <span className="font-medium text-foreground">{deadline}</span>
+                          Closes: <span className="font-medium text-foreground">{deadline}</span>
                           {p.rolling ? " · rolling" : ""}
                         </div>
                       )}
