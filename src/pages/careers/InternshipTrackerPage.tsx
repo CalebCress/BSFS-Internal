@@ -116,9 +116,21 @@ function formatDeadline(ts: number | undefined): string | null {
   });
 }
 
+// Dates are stored as UTC midnight of the day the user picked, so they
+// represent a calendar day rather than a precise instant. Compare them as
+// days against the user's local "today" to avoid timezone-edge bugs where a
+// "today" opening or closing date appears to be in the future/past.
+function dayKey(date: Date, useUTC: boolean): number {
+  const y = useUTC ? date.getUTCFullYear() : date.getFullYear();
+  const m = (useUTC ? date.getUTCMonth() : date.getMonth()) + 1;
+  const d = useUTC ? date.getUTCDate() : date.getDate();
+  return y * 10000 + m * 100 + d;
+}
+
 function isOpen(now: number, openingDate?: number, closingDate?: number): boolean {
-  if (closingDate && closingDate < now) return false;
-  if (openingDate && openingDate > now) return false;
+  const today = dayKey(new Date(now), false);
+  if (closingDate && dayKey(new Date(closingDate), true) < today) return false;
+  if (openingDate && dayKey(new Date(openingDate), true) > today) return false;
   return true;
 }
 
