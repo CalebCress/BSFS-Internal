@@ -127,10 +127,19 @@ function dayKey(date: Date, useUTC: boolean): number {
   return y * 10000 + m * 100 + d;
 }
 
-function isOpen(now: number, openingDate?: number, closingDate?: number): boolean {
+function isOpen(
+  now: number,
+  source: "trackr" | "user",
+  openingDate?: number,
+  closingDate?: number,
+): boolean {
   const today = dayKey(new Date(now), false);
   if (closingDate && dayKey(new Date(closingDate), true) < today) return false;
   if (openingDate && dayKey(new Date(openingDate), true) > today) return false;
+  // Trackr listings without a known closing date are assumed closed — if it
+  // were still open The Trackr would normally publish a deadline. Member-added
+  // entries default to open when dates are unknown.
+  if (source === "trackr" && !closingDate) return false;
   return true;
 }
 
@@ -192,7 +201,7 @@ export function InternshipTrackerPage() {
         if (categoryFilter !== "all" && !p.categories.includes(categoryFilter)) {
           return false;
         }
-        if (openOnly && !isOpen(now, p.openingDate, p.closingDate)) return false;
+        if (openOnly && !isOpen(now, p.source, p.openingDate, p.closingDate)) return false;
         if (hasLinkOnly && !p.url) return false;
         if (noCoverLetterOnly && renderCoverLetter(p.coverLetter) === "Required") {
           return false;
@@ -205,8 +214,8 @@ export function InternshipTrackerPage() {
       })
       .sort((a, b) => {
         // Open with nearest deadline first; closed/no deadline last
-        const aOpen = isOpen(now, a.openingDate, a.closingDate);
-        const bOpen = isOpen(now, b.openingDate, b.closingDate);
+        const aOpen = isOpen(now, a.source, a.openingDate, a.closingDate);
+        const bOpen = isOpen(now, b.source, b.openingDate, b.closingDate);
         if (aOpen !== bOpen) return aOpen ? -1 : 1;
         const aDl = a.closingDate ?? Number.POSITIVE_INFINITY;
         const bDl = b.closingDate ?? Number.POSITIVE_INFINITY;
@@ -448,7 +457,7 @@ export function InternshipTrackerPage() {
             const status = p.myStatus as Status;
             const opens = formatDeadline(p.openingDate);
             const deadline = formatDeadline(p.closingDate);
-            const open = isOpen(now, p.openingDate, p.closingDate);
+            const open = isOpen(now, p.source, p.openingDate, p.closingDate);
             const canEdit =
               p.source === "user" && (p.addedBy === myUserId || hasAdminAccess);
             const coverLetterChip = renderCoverLetter(p.coverLetter);
