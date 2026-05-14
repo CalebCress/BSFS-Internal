@@ -220,6 +220,128 @@ export const list = query({
   },
 });
 
+export const getByPresenter = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const callerId = await getAuthUserId(ctx);
+    if (!callerId) return [];
+
+    // Resources where the user is the direct presenter (e.g. special reports)
+    const direct = await ctx.db
+      .query("resources")
+      .filter((q) => q.eq(q.field("presenterUserId"), args.userId))
+      .collect();
+
+    // Resources linked to events where the user is a presenter
+    const eventsAsCorporate = await ctx.db
+      .query("events")
+      .filter((q) => q.eq(q.field("corporateAssignee"), args.userId))
+      .collect();
+    const eventsAsMarket = await ctx.db
+      .query("events")
+      .filter((q) => q.eq(q.field("marketAssignee"), args.userId))
+      .collect();
+
+    const eventIds = new Set<string>();
+    for (const e of eventsAsCorporate) eventIds.add(e._id);
+    for (const e of eventsAsMarket) eventIds.add(e._id);
+
+    const fromEvents: typeof direct = [];
+    for (const eventId of eventIds) {
+      const resource = await ctx.db
+        .query("resources")
+        .withIndex("by_event", (q) => q.eq("eventId", eventId as any))
+        .unique();
+      if (resource) fromEvents.push(resource);
+    }
+
+    // Dedupe by _id
+    const byId = new Map<string, (typeof direct)[number]>();
+    for (const r of [...direct, ...fromEvents]) byId.set(r._id, r);
+    const resources = Array.from(byId.values());
+
+    const enriched = await Promise.all(
+      resources.map(async (resource) => {
+        const fileUrl = await ctx.storage.getUrl(resource.fileStorageId);
+
+        let corporatePresenterName: string | null = null;
+        let marketPresenterName: string | null = null;
+        let corporatePresenter: string | null = null;
+        let marketPresenter: string | null = null;
+        let eventDate: string | null = null;
+        let eventType: string | null = null;
+        let presenter: string | null = null;
+        let presenterName: string | null = null;
+
+        const event = resource.eventId ? await ctx.db.get(resource.eventId) : null;
+
+        if (event) {
+          eventDate = event.date;
+          eventType = event.eventType
+            ?? (event.isCorporateMarketUpdate ? "corporate_market_update" : null);
+          if (event.corporateAssignee) {
+            corporatePresenter = event.corporateAssignee;
+            const profile = await ctx.db
+              .query("profiles")
+              .withIndex("by_userId", (q: any) =>
+                q.eq("userId", event.corporateAssignee)
+              )
+              .unique();
+            corporatePresenterName = profile?.displayName ?? null;
+          }
+          if (event.marketAssignee) {
+            marketPresenter = event.marketAssignee;
+            const profile = await ctx.db
+              .query("profiles")
+              .withIndex("by_userId", (q: any) =>
+                q.eq("userId", event.marketAssignee)
+              )
+              .unique();
+            marketPresenterName = profile?.displayName ?? null;
+          }
+        }
+
+        if (resource.presenterUserId) {
+          presenter = resource.presenterUserId;
+          const profile = await ctx.db
+            .query("profiles")
+            .withIndex("by_userId", (q: any) =>
+              q.eq("userId", resource.presenterUserId)
+            )
+            .unique();
+          presenterName = profile?.displayName ?? null;
+        }
+
+        const category = resource.category
+          ?? (eventType === "corporate_market_update" ? "market_corporate"
+            : eventType === "workshop" ? "workshop"
+            : eventType === "regional" ? "regional_reports"
+            : "market_corporate");
+
+        return {
+          ...resource,
+          fileUrl,
+          eventDate,
+          corporatePresenterName,
+          marketPresenterName,
+          corporatePresenter,
+          marketPresenter,
+          presenter,
+          presenterName,
+          category,
+        };
+      })
+    );
+
+    // Newest first — prefer eventDate, fall back to uploadedAt
+    return enriched.sort((a, b) => {
+      const aKey = a.eventDate ?? new Date(a.uploadedAt).toISOString();
+      const bKey = b.eventDate ?? new Date(b.uploadedAt).toISOString();
+      return bKey.localeCompare(aKey);
+    });
+  },
+});
+
 export const getByEvent = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {

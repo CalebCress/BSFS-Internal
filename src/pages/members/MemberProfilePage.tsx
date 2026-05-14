@@ -13,7 +13,9 @@ import {
   AvatarImage,
   AvatarFallback,
 } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RatingBadge } from "../stocks/components/RatingBadge";
+import { ResourceCard } from "../resources/components/ResourceCard";
 import { EditProfileDialog } from "./components/EditProfileDialog";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import {
@@ -50,6 +52,11 @@ export function MemberProfilePage() {
 
   const theses = useQuery(
     api.memberTheses.getThesesByUserId,
+    userId ? { userId: userId as Id<"users"> } : "skip"
+  );
+
+  const presentations = useQuery(
+    api.resources.getByPresenter,
     userId ? { userId: userId as Id<"users"> } : "skip"
   );
 
@@ -196,80 +203,112 @@ export function MemberProfilePage() {
         </div>
       </div>
 
-      {/* Stock Theses Section */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">
-          Stock Theses{" "}
-          {theses && theses.length > 0 && (
-            <span className="text-muted-foreground font-normal">
-              ({theses.length})
-            </span>
-          )}
-        </h2>
+      {/* Tabs: Stock Theses & Presentations */}
+      <Tabs defaultValue="theses">
+        <TabsList>
+          <TabsTrigger value="theses">
+            Stock Theses
+            {theses && theses.length > 0 && (
+              <span className="ml-1.5 text-muted-foreground font-normal">
+                ({theses.length})
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="presentations">
+            Presentations
+            {presentations && presentations.length > 0 && (
+              <span className="ml-1.5 text-muted-foreground font-normal">
+                ({presentations.length})
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-        {theses === undefined ? (
-          <div className="space-y-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : theses.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            No stock theses yet.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {theses.map((thesis) => {
-              const sentimentConfig =
-                SENTIMENT[thesis.sentiment as Sentiment] ??
-                SENTIMENT.neutral;
-              return (
-                <div
-                  key={thesis._id}
-                  className="rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-                  onClick={() =>
-                    thesis.stock &&
-                    navigate(`/stocks/${thesis.stock.ticker}`)
-                  }
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {thesis.stock && (
-                        <span className="font-semibold">
-                          {thesis.stock.ticker}
-                        </span>
-                      )}
-                      {thesis.stock?.name && (
-                        <span className="text-sm text-muted-foreground">
-                          {thesis.stock.name}
-                        </span>
-                      )}
-                      <RatingBadge rating={thesis.rating} size="sm" />
-                      <Badge
-                        variant="secondary"
-                        className={sentimentConfig.color}
-                      >
-                        {sentimentConfig.label}
-                      </Badge>
-                      {thesis.priceTarget !== undefined && (
-                        <span className="text-xs text-muted-foreground">
-                          PT: ${thesis.priceTarget.toFixed(2)}
-                        </span>
-                      )}
+        <TabsContent value="theses" className="mt-4">
+          {theses === undefined ? (
+            <div className="space-y-3">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : theses.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+              No stock theses yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {theses.map((thesis) => {
+                const sentimentConfig =
+                  SENTIMENT[thesis.sentiment as Sentiment] ??
+                  SENTIMENT.neutral;
+                return (
+                  <div
+                    key={thesis._id}
+                    className="rounded-lg border p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() =>
+                      thesis.stock &&
+                      navigate(`/stocks/${thesis.stock.ticker}`)
+                    }
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {thesis.stock && (
+                          <span className="font-semibold">
+                            {thesis.stock.ticker}
+                          </span>
+                        )}
+                        {thesis.stock?.name && (
+                          <span className="text-sm text-muted-foreground">
+                            {thesis.stock.name}
+                          </span>
+                        )}
+                        <RatingBadge rating={thesis.rating} size="sm" />
+                        <Badge
+                          variant="secondary"
+                          className={sentimentConfig.color}
+                        >
+                          {sentimentConfig.label}
+                        </Badge>
+                        {thesis.priceTarget !== undefined && (
+                          <span className="text-xs text-muted-foreground">
+                            PT: ${thesis.priceTarget.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {formatDate(thesis.updatedAt)}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {formatDate(thesis.updatedAt)}
-                    </span>
+                    <p className="text-sm whitespace-pre-wrap line-clamp-3">
+                      {thesis.thesis}
+                    </p>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap line-clamp-3">
-                    {thesis.thesis}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="presentations" className="mt-4">
+          {presentations === undefined ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : presentations.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+              No presentations yet.
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {presentations.map((resource) => (
+                <ResourceCard key={resource._id} resource={resource} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Profile Dialog */}
       {isOwnProfile && (
