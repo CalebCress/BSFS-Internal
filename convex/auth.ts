@@ -55,3 +55,24 @@ export const changePassword = action({
     });
   },
 });
+
+// Manual password reset, intended to be run from the Convex dashboard's
+// function runner. The dashboard is only accessible to trusted project
+// members, so this does not require the user's current password — it sets a
+// new password directly for the account matching `email`.
+export const adminResetPassword = action({
+  args: {
+    email: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (args.newPassword.length < 8) {
+      throw new Error("New password must be at least 8 characters.");
+    }
+
+    await modifyAccountCredentials(ctx, {
+      provider: "password",
+      account: { id: args.email, secret: args.newPassword },
+    });
+  },
+});
