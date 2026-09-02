@@ -20,6 +20,12 @@ import { CvReviewPage } from "./pages/careers/CvReviewPage";
 import { ReviewQueuePage } from "./pages/careers/ReviewQueuePage";
 import { InternshipTrackerPage } from "./pages/careers/InternshipTrackerPage";
 import { PublicApplicationPage } from "./pages/public/PublicApplicationPage";
+import { ApplicationsOverviewPage } from "./pages/applications/ApplicationsOverviewPage";
+import { FormsPage } from "./pages/applications/FormsPage";
+import { ApplicantsPage } from "./pages/applications/ApplicantsPage";
+import { ApplicantDetailPage } from "./pages/applications/ApplicantDetailPage";
+import { InterviewsPage } from "./pages/applications/InterviewsPage";
+import { ReviewsPage } from "./pages/applications/ReviewsPage";
 import { ProfileSetupPage } from "./pages/ProfileSetupPage";
 import { PendingApprovalPage } from "./pages/PendingApprovalPage";
 import { RejectedPage } from "./pages/RejectedPage";
@@ -51,6 +57,12 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <RequireAccess check="member"><CalendarPage /></RequireAccess> },
       { path: "calendar", element: <RequireAccess check="member"><CalendarPage /></RequireAccess> },
+      { path: "applications", element: <RequireAccess check="member"><ApplicationsOverviewPage /></RequireAccess> },
+      { path: "applications/forms", element: <RequireAccess check="member"><FormsPage /></RequireAccess> },
+      { path: "applications/applicants", element: <RequireAccess check="member"><ApplicantsPage /></RequireAccess> },
+      { path: "applications/applicants/:id", element: <RequireAccess check="member"><ApplicantDetailPage /></RequireAccess> },
+      { path: "applications/interviews", element: <RequireAccess check="member"><InterviewsPage /></RequireAccess> },
+      { path: "applications/reviews", element: <RequireAccess check="member"><ReviewsPage /></RequireAccess> },
       { path: "members", element: <MembersPage /> },
       { path: "members/:userId", element: <MemberProfilePage /> },
       { path: "stocks", element: <RequireAccess check="member"><StocksPage /></RequireAccess> },

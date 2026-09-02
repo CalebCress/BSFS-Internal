@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import {
+  ClipboardList,
   CalendarDays,
   TrendingUp,
   Users,
@@ -35,6 +36,14 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
+const applicationSubItems = [
+  { title: "Overview", path: "/applications" },
+  { title: "Forms", path: "/applications/forms" },
+  { title: "Applicants", path: "/applications/applicants" },
+  { title: "Interviews", path: "/applications/interviews" },
+  { title: "Reviews", path: "/applications/reviews" },
+];
+
 const stockSubItems = [
   { title: "All Stocks", path: "/stocks" },
   { title: "My Theses", path: "/stocks/my-theses" },
@@ -61,12 +70,18 @@ export function AppSidebar() {
   const { profile, hasAdminAccess, canRecordAttendance, isCvReviewer, isAlumni } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
 
+  const isInApplications = location.pathname.startsWith("/applications");
   const isInStocks = location.pathname.startsWith("/stocks");
   const isInResources = location.pathname.startsWith("/resources");
   const isInCareers = location.pathname.startsWith("/careers");
+  const [applicationsOpen, setApplicationsOpen] = useState(isInApplications);
   const [stocksOpen, setStocksOpen] = useState(isInStocks);
   const [resourcesOpen, setResourcesOpen] = useState(isInResources);
   const [careersOpen, setCareersOpen] = useState(isInCareers);
+
+  useEffect(() => {
+    if (isInApplications) setApplicationsOpen(true);
+  }, [isInApplications]);
 
   useEffect(() => {
     if (isInStocks) setStocksOpen(true);
@@ -99,6 +114,44 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Applications (hidden from alumni) */}
+              {!isAlumni && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isInApplications}
+                    onClick={() => setApplicationsOpen(!applicationsOpen)}
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    <span>Applications</span>
+                    <ChevronRight
+                      className={`ml-auto h-4 w-4 transition-transform ${
+                        applicationsOpen ? "rotate-90" : ""
+                      }`}
+                    />
+                  </SidebarMenuButton>
+                  {applicationsOpen && (
+                    <SidebarMenuSub>
+                      {applicationSubItems.map((item) => {
+                        const isSubActive =
+                          item.path === "/applications"
+                            ? location.pathname === "/applications"
+                            : location.pathname.startsWith(item.path);
+                        return (
+                          <SidebarMenuSubItem key={item.path}>
+                            <SidebarMenuSubButton
+                              isActive={isSubActive}
+                              onClick={() => navigate(item.path)}
+                            >
+                              <span>{item.title}</span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
+
               {/* Calendar (hidden from alumni) */}
               {!isAlumni && (
                 <SidebarMenuItem>
