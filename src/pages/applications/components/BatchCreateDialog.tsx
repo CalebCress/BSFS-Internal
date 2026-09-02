@@ -48,15 +48,18 @@ export function BatchCreateDialog({
     "telephone"
   );
   const [maxInterviewers, setMaxInterviewers] = useState(2);
-  const [autoAssign, setAutoAssign] = useState(true);
+  const [tables, setTables] = useState(1);
+  const [autoAssign, setAutoAssign] = useState(false);
 
   const slotCount = useMemo(() => {
     if (!startTime || !endTime) return 0;
     const startMin = toMinutes(startTime);
     const endMin = toMinutes(endTime);
     if (endMin <= startMin) return 0;
-    return Math.floor((endMin - startMin) / duration);
-  }, [startTime, endTime, duration]);
+    // One row per table, so an assessment centre with N tables creates N slots
+    // per time window.
+    return Math.floor((endMin - startMin) / duration) * Math.max(tables, 1);
+  }, [startTime, endTime, duration, tables]);
 
   const resetForm = () => {
     setDate("");
@@ -65,7 +68,8 @@ export function BatchCreateDialog({
     setDuration(30);
     setType("telephone");
     setMaxInterviewers(2);
-    setAutoAssign(true);
+    setTables(1);
+    setAutoAssign(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +93,7 @@ export function BatchCreateDialog({
         duration,
         type,
         maxInterviewers,
+        tables: type === "assessment_center" ? tables : 1,
         autoAssign,
       });
       const msg = `Created ${result.slotsCreated} slot${result.slotsCreated !== 1 ? "s" : ""}${
@@ -208,18 +213,41 @@ export function BatchCreateDialog({
             />
           </div>
 
+          {/* Tables (assessment centres run several in parallel) */}
+          {type === "assessment_center" && (
+            <div className="space-y-2">
+              <Label>Tables per Time Slot</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={tables}
+                onChange={(e) => setTables(Number(e.target.value))}
+              />
+              <p className="text-xs text-muted-foreground">
+                How many tables run at the same time. Each seats one applicant.
+              </p>
+            </div>
+          )}
+
           {/* Auto-assign toggle */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="autoAssign"
-              checked={autoAssign}
-              onChange={(e) => setAutoAssign(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-            />
-            <Label htmlFor="autoAssign" className="cursor-pointer">
-              Auto-assign applicants to slots
-            </Label>
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="autoAssign"
+                checked={autoAssign}
+                onChange={(e) => setAutoAssign(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="autoAssign" className="cursor-pointer">
+                Auto-assign applicants (skips anyone who has already booked)
+              </Label>
+            </div>
+            <p className="pl-7 text-xs text-muted-foreground">
+              Leave off if you&apos;re sending booking links &mdash; applicants
+              will choose their own time.
+            </p>
           </div>
 
           <Separator />

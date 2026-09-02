@@ -20,6 +20,7 @@ import { CvReviewPage } from "./pages/careers/CvReviewPage";
 import { ReviewQueuePage } from "./pages/careers/ReviewQueuePage";
 import { InternshipTrackerPage } from "./pages/careers/InternshipTrackerPage";
 import { PublicApplicationPage } from "./pages/public/PublicApplicationPage";
+import { PublicInterviewBookingPage } from "./pages/public/PublicInterviewBookingPage";
 import { ApplicationsOverviewPage } from "./pages/applications/ApplicationsOverviewPage";
 import { FormsPage } from "./pages/applications/FormsPage";
 import { ApplicantsPage } from "./pages/applications/ApplicantsPage";
@@ -45,6 +46,11 @@ export const router = createBrowserRouter([
     path: "/apply",
     element: <PublicLayout />,
     children: [{ index: true, element: <PublicApplicationPage /> }],
+  },
+  {
+    path: "/interview/:token",
+    element: <PublicLayout />,
+    children: [{ index: true, element: <PublicInterviewBookingPage /> }],
   },
   { path: "/setup", element: <ProfileSetupPage /> },
   { path: "/alumni-register", element: <AlumniRegisterPage /> },

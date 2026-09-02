@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { type Id } from "../../../convex/_generated/dataModel";
 import { formatDate } from "@/lib/utils";
@@ -40,7 +40,10 @@ import {
   Download,
   ExternalLink,
   Star,
+  Link2,
+  Send,
 } from "lucide-react";
+import { toast } from "sonner";
 import { REVIEW_TYPES, type ReviewType } from "@/lib/constants";
 
 /** Maps fieldId from the responses array to human-readable question labels */
@@ -62,11 +65,63 @@ export function ApplicantDetailPage() {
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewTypeOverride, setReviewTypeOverride] =
     useState<ReviewType | null>(null);
+  const [copyingLink, setCopyingLink] = useState(false);
 
   const applicant = useQuery(
     api.applicants.getById,
     id ? { id: id as Id<"applicants"> } : "skip"
   );
+
+  const ensureBookingToken = useMutation(api.applicants.ensureBookingToken);
+
+  // The booking link only works while the applicant is in an interview round,
+  // so don't hand one out before then.
+  const canBookInterview =
+    applicant?.stage === "telephone" ||
+    applicant?.stage === "assessment_center";
+
+  /** Mint (or fetch) the token and build the public booking URL. */
+  const getBookingLink = async () => {
+    const token = await ensureBookingToken({ id: id as Id<"applicants"> });
+    return `${window.location.origin}/interview/${token}`;
+  };
+
+  const handleCopyBookingLink = async () => {
+    setCopyingLink(true);
+    try {
+      await navigator.clipboard.writeText(await getBookingLink());
+      toast.success("Booking link copied to clipboard");
+    } catch {
+      toast.error("Could not copy the booking link");
+    } finally {
+      setCopyingLink(false);
+    }
+  };
+
+  /** Stopgap until an email provider is wired up: open the user's mail client. */
+  const handleEmailBookingLink = async () => {
+    if (!applicant) return;
+    setCopyingLink(true);
+    try {
+      const link = await getBookingLink();
+      const label =
+        applicant.stage === "telephone"
+          ? "telephone interview"
+          : "assessment centre";
+      const subject = `BSFS - book your ${label}`;
+      const body =
+        `Hi ${applicant.firstName},\n\n` +
+        `Please use the link below to choose a time for your ${label}:\n\n` +
+        `${link}\n\n` +
+        `You can change or cancel your slot up to 24 hours beforehand.\n\n` +
+        `Best,\nBSFS`;
+      window.location.href = `mailto:${applicant.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    } catch {
+      toast.error("Could not prepare the email");
+    } finally {
+      setCopyingLink(false);
+    }
+  };
 
   // Derive review type from stage, allow user override via dropdown
   const defaultReviewType = applicant
@@ -377,6 +432,36 @@ export function ApplicantDetailPage() {
               <div className="text-sm">
                 <span className="text-muted-foreground">Round: </span>
                 <span className="font-medium">{applicant.formTitle}</span>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Interview booking link</p>
+                {canBookInterview ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleCopyBookingLink()}
+                      disabled={copyingLink}
+                    >
+                      <Link2 className="mr-2 h-3.5 w-3.5" />
+                      {copyingLink ? "Copying..." : "Copy booking link"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void handleEmailBookingLink()}
+                      disabled={copyingLink}
+                    >
+                      <Send className="mr-2 h-3.5 w-3.5" />
+                      Email applicant
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Available once the applicant is moved to an interview stage.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -30,6 +30,9 @@ export const batchCreate = mutation({
     duration: v.number(),
     type: slotTypeValidator,
     maxInterviewers: v.number(),
+    // Parallel tables per time window. Assessment centres run several at once;
+    // telephone interviews are always 1.
+    tables: v.optional(v.number()),
     autoAssign: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -52,6 +55,10 @@ export const batchCreate = mutation({
     if (args.maxInterviewers < 1) {
       throw new Error("Max interviewers must be at least 1");
     }
+    const tables = args.tables ?? 1;
+    if (!Number.isInteger(tables) || tables < 1 || tables > 20) {
+      throw new Error("Tables must be a whole number between 1 and 20");
+    }
 
     const startMin = toMinutes(args.startTime);
     const endMin = toMinutes(args.endTime);
@@ -66,15 +73,19 @@ export const batchCreate = mutation({
       const slotStart = fromMinutes(currentMin);
       const slotEnd = fromMinutes(currentMin + args.duration);
 
-      const slotId = await ctx.db.insert("interviewSlots", {
-        date: args.date,
-        startTime: slotStart,
-        endTime: slotEnd,
-        type: args.type,
-        maxInterviewers: args.maxInterviewers,
-        createdBy: userId,
-      });
-      slotIds.push(slotId);
+      // One row per table, all sharing the same time window.
+      for (let table = 1; table <= tables; table++) {
+        const slotId = await ctx.db.insert("interviewSlots", {
+          date: args.date,
+          startTime: slotStart,
+          endTime: slotEnd,
+          type: args.type,
+          maxInterviewers: args.maxInterviewers,
+          tableNumber: tables > 1 ? table : undefined,
+          createdBy: userId,
+        });
+        slotIds.push(slotId);
+      }
       currentMin += args.duration;
     }
 

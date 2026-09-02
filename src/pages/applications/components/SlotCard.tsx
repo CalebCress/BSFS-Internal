@@ -18,6 +18,7 @@ interface SlotData {
   endTime: string;
   type: "telephone" | "assessment_center";
   maxInterviewers: number;
+  tableNumber?: number;
   applicantId?: Id<"applicants">;
   signupCount: number;
   signupUserIds: string[];
@@ -82,6 +83,11 @@ export function SlotCard({
             <span className="font-medium">
               {slot.startTime} &ndash; {slot.endTime}
             </span>
+            {slot.tableNumber !== undefined && (
+              <Badge variant="outline" className="font-normal">
+                Table {slot.tableNumber}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className={typeStyle.color}>

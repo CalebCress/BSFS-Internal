@@ -79,10 +79,14 @@ export default defineSchema({
     applicationFormId: v.id("applicationForms"),
     appliedAt: v.number(),
     notes: v.optional(v.string()),
+    // Secret token for the public interview booking link (/interview/:token).
+    // Optional because rows created before this feature have none.
+    bookingToken: v.optional(v.string()),
   })
     .index("by_stage", ["stage"])
     .index("by_email", ["email"])
-    .index("by_applicationForm", ["applicationFormId"]),
+    .index("by_applicationForm", ["applicationFormId"])
+    .index("by_bookingToken", ["bookingToken"]),
 
   // Application form submissions
   applications: defineTable({
@@ -111,6 +115,10 @@ export default defineSchema({
     ),
     maxInterviewers: v.number(),
     applicantId: v.optional(v.id("applicants")),
+    // Assessment centres run several tables in parallel at the same time. Each
+    // table is its own row sharing date/startTime/endTime, so one applicant per
+    // row still holds. Absent (or 1) for telephone interviews.
+    tableNumber: v.optional(v.number()),
     createdBy: v.id("users"),
   })
     .index("by_date", ["date"])

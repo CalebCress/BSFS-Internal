@@ -20,6 +20,7 @@ import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as internships from "../internships.js";
 import type * as internshipsSync from "../internshipsSync.js";
+import type * as interviewBooking from "../interviewBooking.js";
 import type * as interviewSignups from "../interviewSignups.js";
 import type * as interviewSlots from "../interviewSlots.js";
 import type * as massive from "../massive.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   internships: typeof internships;
   internshipsSync: typeof internshipsSync;
+  interviewBooking: typeof interviewBooking;
   interviewSignups: typeof interviewSignups;
   interviewSlots: typeof interviewSlots;
   massive: typeof massive;

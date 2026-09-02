@@ -66,6 +66,9 @@ export const submit = mutation({
       stage: "applied",
       applicationFormId: args.applicationFormId,
       appliedAt: now,
+      // Minted up front so every applicant is linkable the moment staff move
+      // them into an interview round.
+      bookingToken: crypto.randomUUID(),
     });
 
     // Create application record with responses
