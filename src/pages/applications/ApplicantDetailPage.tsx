@@ -73,6 +73,7 @@ export function ApplicantDetailPage() {
   );
 
   const ensureBookingToken = useMutation(api.applicants.ensureBookingToken);
+  const sendInvite = useMutation(api.interviewInvites.sendInvite);
 
   // The booking link only works while the applicant is in an interview round,
   // so don't hand one out before then.
@@ -98,26 +99,17 @@ export function ApplicantDetailPage() {
     }
   };
 
-  /** Stopgap until an email provider is wired up: open the user's mail client. */
+  /** Email the applicant their booking link via Resend. */
   const handleEmailBookingLink = async () => {
     if (!applicant) return;
     setCopyingLink(true);
     try {
-      const link = await getBookingLink();
-      const label =
-        applicant.stage === "telephone"
-          ? "telephone interview"
-          : "assessment centre";
-      const subject = `BSFS - book your ${label}`;
-      const body =
-        `Hi ${applicant.firstName},\n\n` +
-        `Please use the link below to choose a time for your ${label}:\n\n` +
-        `${link}\n\n` +
-        `You can change or cancel your slot up to 24 hours beforehand.\n\n` +
-        `Best,\nBSFS`;
-      window.location.href = `mailto:${applicant.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    } catch {
-      toast.error("Could not prepare the email");
+      await sendInvite({ applicantId: id as Id<"applicants"> });
+      toast.success(`Booking invite sent to ${applicant.email}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not send the invite"
+      );
     } finally {
       setCopyingLink(false);
     }
@@ -454,7 +446,7 @@ export function ApplicantDetailPage() {
                       disabled={copyingLink}
                     >
                       <Send className="mr-2 h-3.5 w-3.5" />
-                      Email applicant
+                      {copyingLink ? "Sending..." : "Email booking link"}
                     </Button>
                   </div>
                 ) : (

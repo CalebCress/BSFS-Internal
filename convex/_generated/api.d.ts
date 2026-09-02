@@ -16,11 +16,13 @@ import type * as auth from "../auth.js";
 import type * as calendar from "../calendar.js";
 import type * as crons from "../crons.js";
 import type * as cvReviews from "../cvReviews.js";
+import type * as email from "../email.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as internships from "../internships.js";
 import type * as internshipsSync from "../internshipsSync.js";
 import type * as interviewBooking from "../interviewBooking.js";
+import type * as interviewInvites from "../interviewInvites.js";
 import type * as interviewSignups from "../interviewSignups.js";
 import type * as interviewSlots from "../interviewSlots.js";
 import type * as massive from "../massive.js";
@@ -47,11 +49,13 @@ declare const fullApi: ApiFromModules<{
   calendar: typeof calendar;
   crons: typeof crons;
   cvReviews: typeof cvReviews;
+  email: typeof email;
   events: typeof events;
   http: typeof http;
   internships: typeof internships;
   internshipsSync: typeof internshipsSync;
   interviewBooking: typeof interviewBooking;
+  interviewInvites: typeof interviewInvites;
   interviewSignups: typeof interviewSignups;
   interviewSlots: typeof interviewSlots;
   massive: typeof massive;
@@ -90,4 +94,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
+};

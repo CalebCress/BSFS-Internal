@@ -2,10 +2,21 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
+import { resend } from "./email";
 
 const http = httpRouter();
 
 auth.addHttpRoutes(http);
+
+// Resend delivery/bounce notifications. Configure this URL as a webhook in the
+// Resend dashboard: https://<deployment>.convex.site/resend-webhook
+http.route({
+  path: "/resend-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    return await resend.handleResendEventWebhook(ctx, req);
+  }),
+});
 
 // iCal calendar feed endpoint
 http.route({

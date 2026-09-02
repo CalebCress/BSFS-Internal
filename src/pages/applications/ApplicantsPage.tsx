@@ -12,12 +12,22 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { STAGES, type Stage } from "@/lib/constants";
 import { ApplicantTableView } from "./components/ApplicantTableView";
+import { SendInvitesDialog } from "./components/SendInvitesDialog";
+import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 
 export function ApplicantsPage() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<Stage | "all">("all");
 
   const applicants = useQuery(api.applicants.list, {});
+  const { hasAdminAccess } = useCurrentProfile();
+
+  // Bulk invites only make sense when looking at a single interview stage -
+  // "all stages" would mix rounds and people with nothing to book.
+  const invitableStage =
+    stageFilter === "telephone" || stageFilter === "assessment_center"
+      ? stageFilter
+      : null;
 
   const filteredApplicants = useMemo(() => {
     if (!applicants) return [];
@@ -47,6 +57,9 @@ export function ApplicantsPage() {
               : "Loading..."}
           </p>
         </div>
+        {hasAdminAccess && invitableStage && (
+          <SendInvitesDialog stage={invitableStage} />
+        )}
       </div>
 
       {/* Search + Filter Bar */}

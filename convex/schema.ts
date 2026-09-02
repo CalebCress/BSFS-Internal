@@ -82,6 +82,9 @@ export default defineSchema({
     // Secret token for the public interview booking link (/interview/:token).
     // Optional because rows created before this feature have none.
     bookingToken: v.optional(v.string()),
+    // When a booking invite was last emailed, so a bulk send can skip anyone
+    // who has already been contacted.
+    inviteLastSentAt: v.optional(v.number()),
   })
     .index("by_stage", ["stage"])
     .index("by_email", ["email"])
