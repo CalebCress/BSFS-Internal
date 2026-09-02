@@ -2,6 +2,8 @@ import { query, mutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import { resend, fromAddress, replyToAddresses } from "./email";
 
 /**
  * Public (unauthenticated) interview booking.
@@ -16,6 +18,16 @@ import type { Doc } from "./_generated/dataModel";
  * rejected applicant's link stops working immediately, even if they replay a
  * previously captured request.
  */
+
+/**
+ * Whether applicants may change or cancel their own booking after confirming.
+ *
+ * Turned OFF for now: a booking is final once confirmed, and staff rearrange
+ * anything that needs moving. The whole reschedule path below is kept intact
+ * and still enforces RESCHEDULE_CUTOFF_HOURS, so flipping this back to true is
+ * all that's needed to re-enable it - server, UI and copy follow from here.
+ */
+export const ALLOW_RESCHEDULE = false;
 
 /** How long before an interview an applicant can still change or cancel it. */
 export const RESCHEDULE_CUTOFF_HOURS = 24;
@@ -114,6 +126,88 @@ async function heldSlots(ctx: QueryCtx, applicantId: Doc<"applicants">["_id"]) {
   return slots.sort((a, b) => slotKey(a).localeCompare(slotKey(b)));
 }
 
+
+const STAGE_EMAIL_LABELS = {
+  telephone: "telephone interview",
+  assessment_center: "assessment centre",
+} as const;
+
+/** "Monday 12 January 2026", read in the interview's own timezone. */
+function formatSlotDate(date: string): string {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", {
+    timeZone: TIMEZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Confirm a just-made booking by email.
+ *
+ * Idempotency is keyed on the slot, so the confirmation for a given booking is
+ * sent once even if the mutation is retried by Convex's optimistic concurrency.
+ */
+async function sendBookingConfirmation(
+  ctx: MutationCtx,
+  applicant: Doc<"applicants">,
+  stage: keyof typeof STAGE_EMAIL_LABELS,
+  slot: Doc<"interviewSlots">
+) {
+  const label = STAGE_EMAIL_LABELS[stage];
+  const when = `${formatSlotDate(slot.date)} at ${slot.startTime}`;
+  const safeName = escapeHtml(applicant.firstName);
+  const safeWhen = escapeHtml(when);
+
+  const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:520px">
+  <p>Hi ${safeName},</p>
+  <p>Your BSFS ${label} is confirmed for:</p>
+  <p style="margin:24px 0;padding:16px 20px;background:#f4f6fb;border-left:3px solid #0b3d91;font-size:16px;font-weight:600">
+    ${safeWhen} (${escapeHtml(slot.startTime)}&ndash;${escapeHtml(slot.endTime)}, Italian time)
+  </p>
+  <p>We look forward to speaking with you.</p>
+  <p style="color:#555">
+    If you need to change anything, just reply to this email and we'll help.
+  </p>
+  <p>Best regards,<br />The BSFS Team</p>
+</div>`.trim();
+
+  const text = [
+    `Hi ${applicant.firstName},`,
+    "",
+    `Your BSFS ${label} is confirmed for:`,
+    "",
+    `${when} (${slot.startTime}-${slot.endTime}, Italian time)`,
+    "",
+    "We look forward to speaking with you.",
+    "",
+    "If you need to change anything, just reply to this email and we'll help.",
+    "",
+    "Best regards,",
+    "The BSFS Team",
+  ].join("\n");
+
+  await resend.sendEmail(ctx, {
+    from: fromAddress(),
+    to: `${applicant.firstName} ${applicant.lastName} <${applicant.email}>`,
+    subject: `Confirmed: your BSFS ${label} on ${when}`,
+    html,
+    text,
+    replyTo: replyToAddresses(),
+    idempotencyKey: `booking-confirmation:${slot._id}:${applicant._id}`,
+  });
+}
+
 /**
  * Load everything the public booking page needs for one token.
  *
@@ -188,6 +282,7 @@ export const getByToken = query({
           changeDeadlineMs:
             slotStartMs(current.date, current.startTime) - CUTOFF_MS,
           canChange:
+            ALLOW_RESCHEDULE &&
             slotStartMs(current.date, current.startTime) - now > CUTOFF_MS,
         }
       : null;
@@ -196,6 +291,7 @@ export const getByToken = query({
       status: "ok" as const,
       firstName: applicant.firstName,
       type: stage,
+      allowReschedule: ALLOW_RESCHEDULE,
       cutoffHours: RESCHEDULE_CUTOFF_HOURS,
       booking,
       slots,
@@ -280,12 +376,22 @@ export const book = mutation({
     // Releasing the old booking and claiming the new one happen in one
     // transaction, so the applicant is never left holding nothing.
     const held = await heldSlots(ctx, applicant._id);
+    if (held.length > 0 && !ALLOW_RESCHEDULE) {
+      throw new Error(
+        "You already have an interview booked. Please contact us if you need to change it."
+      );
+    }
     assertChangeable(held, now);
     for (const slot of held) {
       await ctx.db.patch(slot._id, { applicantId: undefined });
     }
 
     await ctx.db.patch(free._id, { applicantId: applicant._id });
+
+    // Enqueued inside the same transaction, so a confirmation is only ever
+    // sent for a booking that actually stuck.
+    await sendBookingConfirmation(ctx, applicant, stage, free);
+
     return { ok: true as const };
   },
 });
@@ -294,6 +400,12 @@ export const book = mutation({
 export const cancel = mutation({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    if (!ALLOW_RESCHEDULE) {
+      throw new Error(
+        "Bookings can't be cancelled online. Please contact us if you need to change your interview."
+      );
+    }
+
     const resolved = await resolveApplicant(ctx, args.token);
     if (resolved.status !== "ok") {
       throw new Error(

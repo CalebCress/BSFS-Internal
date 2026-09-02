@@ -86,6 +86,9 @@ export function PublicInterviewBookingPage() {
 
   const [pending, setPending] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
+  // Picking a time only highlights it; nothing is booked until they confirm,
+  // so a mis-tap on a phone can't silently claim the wrong slot.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   // Group the flat slot list into one card per date. Already sorted server-side.
   const slotsByDate = useMemo(() => {
@@ -136,18 +139,28 @@ export function PublicInterviewBookingPage() {
     );
   }
 
-  const { firstName, type, cutoffHours, booking } = data;
+  const { firstName, type, cutoffHours, booking, allowReschedule } = data;
   const typeLabel =
     type === "assessment_center"
       ? TYPE_LABELS.assessment_center
       : TYPE_LABELS.telephone;
 
-  const handleBook = async (slot: SlotOption) => {
-    setPending(`${slot.date}T${slot.startTime}`);
+  const slotKeyOf = (slot: SlotOption) => `${slot.date}T${slot.startTime}`;
+  const selectedSlot =
+    data.slots.find((slot) => slotKeyOf(slot) === selectedKey) ?? null;
+
+  const handleConfirm = async () => {
+    if (!selectedSlot) return;
+    setPending(slotKeyOf(selectedSlot));
     try {
-      await book({ token: token!, date: slot.date, startTime: slot.startTime });
+      await book({
+        token: token!,
+        date: selectedSlot.date,
+        startTime: selectedSlot.startTime,
+      });
       setChanging(false);
-      toast.success("Your interview is booked");
+      setSelectedKey(null);
+      toast.success("Your interview is confirmed");
     } catch (error) {
       // The thrown Convex messages are written as applicant-facing copy.
       toast.error(
@@ -201,7 +214,12 @@ export function PublicInterviewBookingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {booking.canChange ? (
+            {!allowReschedule ? (
+              <p className="text-sm text-muted-foreground">
+                We&apos;ve sent a confirmation to your email. If you need to
+                change anything, just reply to it and we&apos;ll help.
+              </p>
+            ) : booking.canChange ? (
               <>
                 <p className="mb-4 text-sm text-muted-foreground">
                   You can change or cancel until{" "}
@@ -242,8 +260,9 @@ export function PublicInterviewBookingPage() {
       {showPicker && (
         <>
           <p className="text-sm text-muted-foreground">
-            You can change or cancel your booking up until {cutoffHours} hours
-            before your interview.
+            {allowReschedule
+              ? `Pick a time, then confirm. You can change or cancel up until ${cutoffHours} hours before your interview.`
+              : "Pick a time, then confirm. Your booking is final once confirmed, so please double-check before confirming."}
           </p>
 
           {slotsByDate.length === 0 ? (
@@ -264,26 +283,29 @@ export function PublicInterviewBookingPage() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                     {slots.map((slot) => {
-                      const key = `${slot.date}T${slot.startTime}`;
-                      const isPending = pending === key;
+                      const key = slotKeyOf(slot);
                       const bookable = slot.available && !slot.isMine;
+                      const isSelected = selectedKey === key;
 
                       return (
                         <Button
                           key={key}
-                          variant={bookable ? "outline" : "ghost"}
+                          variant={
+                            isSelected
+                              ? "default"
+                              : bookable
+                                ? "outline"
+                                : "ghost"
+                          }
                           disabled={!bookable || pending !== null}
-                          onClick={() => void handleBook(slot)}
+                          onClick={() => setSelectedKey(isSelected ? null : key)}
                           className="h-auto flex-col py-2"
+                          aria-pressed={isSelected}
                         >
                           <span>
                             {slot.startTime} – {slot.endTime}
                           </span>
-                          {isPending ? (
-                            <span className="text-xs font-normal text-muted-foreground">
-                              Booking...
-                            </span>
-                          ) : slot.isMine ? (
+                          {slot.isMine ? (
                             <span className="text-xs font-normal text-muted-foreground">
                               Your time
                             </span>
@@ -301,6 +323,36 @@ export function PublicInterviewBookingPage() {
                 </CardContent>
               </Card>
             ))
+          )}
+
+          {slotsByDate.length > 0 && (
+            <Card className="sticky bottom-4 shadow-lg">
+              <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
+                <div className="text-sm">
+                  {selectedSlot ? (
+                    <>
+                      <span className="text-muted-foreground">
+                        Selected time:
+                      </span>{" "}
+                      <span className="font-semibold">
+                        {formatSlotDate(selectedSlot.date)} at{" "}
+                        {selectedSlot.startTime} – {selectedSlot.endTime}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Select a time above to continue.
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => void handleConfirm()}
+                  disabled={!selectedSlot || pending !== null}
+                >
+                  {pending !== null ? "Confirming..." : "Confirm this time"}
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </>
       )}
