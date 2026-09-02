@@ -29,7 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StageBadge } from "./components/StageBadge";
 import { ApplicantStageSelect } from "./components/ApplicantStageSelect";
-import { ScoreDisplay } from "./components/ScoreDisplay";
+import { ScoreDisplay, ZScoreBadge } from "./components/ScoreDisplay";
 import { ReviewForm } from "./components/ReviewForm";
 import {
   ArrowLeft,
@@ -44,10 +44,20 @@ import {
   Send,
 } from "lucide-react";
 import { toast } from "sonner";
-import { REVIEW_TYPES, type ReviewType } from "@/lib/constants";
+import {
+  REVIEW_TYPES,
+  REVIEW_CATEGORIES,
+  isBoardOnlyReviewType,
+  type ReviewType,
+} from "@/lib/constants";
+import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 
 /** Maps fieldId from the responses array to human-readable question labels */
 const QUESTION_LABELS: Record<string, string> = {
+  about_you: "Tell me about yourself and why you would be a good fit for BSFS.",
+  markets_insight:
+    "Tell me about an interesting thing you\u2019ve seen in the markets or in corporate finance (M&A, Capital Markets, and PE Deals).",
+  // Legacy ids, kept so applications from earlier rounds still render a label.
   why_bsfs: "Why BSFS and why you?",
   interesting_learning: "What's something interesting you've learned recently?",
 };
@@ -115,11 +125,26 @@ export function ApplicantDetailPage() {
     }
   };
 
-  // Derive review type from stage, allow user override via dropdown
-  const defaultReviewType = applicant
+  const { isBoardMember } = useCurrentProfile();
+
+  // Application and telephone reviews are board-only, so a committee member
+  // must not be offered them - nor be defaulted onto one, which would leave
+  // every review query returning empty with no visible explanation.
+  const permittedReviewTypes = (
+    Object.keys(REVIEW_TYPES) as ReviewType[]
+  ).filter((type) => isBoardMember || !isBoardOnlyReviewType(type));
+
+  const stageReviewType = applicant
     ? stageToReviewType(applicant.stage)
     : "application";
-  const reviewType = reviewTypeOverride ?? defaultReviewType;
+  const defaultReviewType = permittedReviewTypes.includes(stageReviewType)
+    ? stageReviewType
+    : (permittedReviewTypes[0] ?? "assessment_center");
+
+  const reviewType =
+    reviewTypeOverride && permittedReviewTypes.includes(reviewTypeOverride)
+      ? reviewTypeOverride
+      : defaultReviewType;
 
   const reviews = useQuery(
     api.reviews.listByApplicant,
@@ -279,14 +304,9 @@ export function ApplicantDetailPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(
-                        Object.entries(REVIEW_TYPES) as [
-                          ReviewType,
-                          { label: string },
-                        ][]
-                      ).map(([key, { label }]) => (
+                      {permittedReviewTypes.map((key) => (
                         <SelectItem key={key} value={key}>
-                          {label}
+                          {REVIEW_TYPES[key].label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -311,22 +331,13 @@ export function ApplicantDetailPage() {
                 <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
                   <h4 className="text-sm font-semibold">Average Scores</h4>
                   <div className="grid grid-cols-2 gap-2">
-                    <ScoreDisplay
-                      label="Overall"
-                      score={aggregateScores.overall}
-                    />
-                    <ScoreDisplay
-                      label="Motivation"
-                      score={aggregateScores.motivation}
-                    />
-                    <ScoreDisplay
-                      label="Experience"
-                      score={aggregateScores.experience}
-                    />
-                    <ScoreDisplay
-                      label="Culture Fit"
-                      score={aggregateScores.cultureFit}
-                    />
+                    {aggregateScores.categories.map((category) => (
+                      <ScoreDisplay
+                        key={category.key}
+                        label={category.label}
+                        score={category.average}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -347,26 +358,23 @@ export function ApplicantDetailPage() {
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-1">
-                          <ScoreDisplay
-                            label="Overall"
-                            score={review.scores.overall}
-                            size="sm"
-                          />
-                          <ScoreDisplay
-                            label="Motivation"
-                            score={review.scores.motivation}
-                            size="sm"
-                          />
-                          <ScoreDisplay
-                            label="Experience"
-                            score={review.scores.experience}
-                            size="sm"
-                          />
-                          <ScoreDisplay
-                            label="Culture Fit"
-                            score={review.scores.cultureFit}
-                            size="sm"
-                          />
+                          {REVIEW_CATEGORIES[review.reviewType].map(
+                            (category) => (
+                              <div
+                                key={category.key}
+                                className="flex items-center justify-between gap-2"
+                              >
+                                <ScoreDisplay
+                                  label={category.label}
+                                  score={review.scores[category.key]}
+                                  size="sm"
+                                />
+                                <ZScoreBadge
+                                  z={review.zScores?.[category.key]}
+                                />
+                              </div>
+                            )
+                          )}
                         </div>
                         {review.comments && (
                           <p className="text-sm leading-relaxed text-muted-foreground">

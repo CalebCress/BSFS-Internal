@@ -15,8 +15,8 @@ export const submit = mutation({
     lastName: v.string(),
     email: v.string(),
     phone: v.string(),
-    whyBsfs: v.string(),
-    interestingLearning: v.string(),
+    aboutYou: v.string(),
+    marketsInsight: v.string(),
     cvStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
@@ -33,9 +33,9 @@ export const submit = mutation({
     if (!args.lastName.trim()) throw new Error("Last name is required.");
     if (!args.email.trim()) throw new Error("Email is required.");
     if (!args.phone.trim()) throw new Error("Phone number is required.");
-    if (!args.whyBsfs.trim())
+    if (!args.aboutYou.trim())
       throw new Error("Please answer the first question.");
-    if (!args.interestingLearning.trim())
+    if (!args.marketsInsight.trim())
       throw new Error("Please answer the second question.");
 
     // Check for duplicate email within this round
@@ -76,10 +76,10 @@ export const submit = mutation({
       applicantId,
       applicationFormId: args.applicationFormId,
       responses: [
-        { fieldId: "why_bsfs", value: args.whyBsfs.trim() },
+        { fieldId: "about_you", value: args.aboutYou.trim() },
         {
-          fieldId: "interesting_learning",
-          value: args.interestingLearning.trim(),
+          fieldId: "markets_insight",
+          value: args.marketsInsight.trim(),
         },
       ],
       cvStorageId: args.cvStorageId,

@@ -71,3 +71,44 @@ export function ScoreDisplay({
     </div>
   );
 }
+
+/**
+ * A reviewer-normalised score.
+ *
+ * Deliberately not stars: a z-score is a signed distance from a reviewer's own
+ * mean, not a 1-5 rating, and reusing the star widget would imply otherwise.
+ * Exactly 0.00 also means "not enough reviews to normalise yet" - see
+ * MIN_REVIEWS_FOR_ZSCORE in convex/reviewStats.ts.
+ */
+export function ZScoreBadge({
+  z,
+  className,
+}: {
+  z: number | null | undefined;
+  className?: string;
+}) {
+  if (z === null || z === undefined) {
+    return <span className="text-xs text-muted-foreground">&mdash;</span>;
+  }
+
+  const tone =
+    z > 0.05
+      ? "text-green-600"
+      : z < -0.05
+        ? "text-red-600"
+        : "text-muted-foreground";
+
+  return (
+    <span
+      className={cn("text-sm font-medium tabular-nums", tone, className)}
+      title={
+        z === 0
+          ? "Zero: either exactly average, or the reviewer has too few reviews to normalise yet"
+          : "Standard deviations from this reviewer's own average"
+      }
+    >
+      {z > 0 ? "+" : ""}
+      {z.toFixed(2)}
+    </span>
+  );
+}

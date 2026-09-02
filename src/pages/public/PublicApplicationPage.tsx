@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { type Id } from "../../../convex/_generated/dataModel";
@@ -27,15 +27,22 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { CheckCircle, Upload, X, FileText } from "lucide-react";
+import { CheckCircle, Upload, X, FileText, Info } from "lucide-react";
+import {
+  EMPTY_DRAFT,
+  clearDraft,
+  draftHasContent,
+  loadDraft,
+  saveDraft,
+} from "./applyDraft";
 
 const applicationSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(1, "Phone number is required"),
-  whyBsfs: z.string().min(50, "Please write at least 50 characters"),
-  interestingLearning: z.string().min(50, "Please write at least 50 characters"),
+  aboutYou: z.string().min(50, "Please write at least 50 characters"),
+  marketsInsight: z.string().min(50, "Please write at least 50 characters"),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -50,17 +57,45 @@ export function PublicApplicationPage() {
   const [cvFile, setCvFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Read once, before the form exists, so the saved answers become the initial
+  // values rather than being written in afterwards.
+  const [restoredDraft] = useState(loadDraft);
+
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      whyBsfs: "",
-      interestingLearning: "",
-    },
+    defaultValues: restoredDraft?.values ?? EMPTY_DRAFT,
   });
+
+  // NOTE: these effects must stay ABOVE the loading/closed/submitted early
+  // returns below - a hook after a conditional return changes hook order
+  // between renders and React will throw.
+
+  // Persist as they type, debounced so we aren't hitting storage per keystroke.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const subscription = form.watch((values) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        saveDraft(values as Partial<typeof EMPTY_DRAFT>, activeForm?._id ?? null);
+      }, 400);
+    });
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [form, activeForm?._id]);
+
+  // A draft written for a previous round shouldn't resurface in a new one.
+  useEffect(() => {
+    if (!activeForm || !restoredDraft?.formId) return;
+    if (restoredDraft.formId !== activeForm._id) {
+      clearDraft();
+      form.reset(EMPTY_DRAFT);
+    }
+  }, [activeForm, restoredDraft, form]);
+
+  const restoredFromDraft =
+    !!restoredDraft && draftHasContent(restoredDraft.values);
 
   // Loading state
   if (activeForm === undefined) {
@@ -133,11 +168,13 @@ export function PublicApplicationPage() {
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
-        whyBsfs: data.whyBsfs,
-        interestingLearning: data.interestingLearning,
+        aboutYou: data.aboutYou,
+        marketsInsight: data.marketsInsight,
         cvStorageId,
       });
 
+      // Only on success - a failed submit must keep their answers.
+      clearDraft();
       setSubmitted(true);
     } catch (error) {
       toast.error(
@@ -178,6 +215,17 @@ export function PublicApplicationPage() {
           {activeForm.semester} Application Round
         </p>
       </div>
+
+      {restoredFromDraft && (
+        <div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-4 text-sm">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            We restored the answers you saved on this device. Your CV
+            can&apos;t be saved automatically, so please re-attach it before
+            submitting.
+          </p>
+        </div>
+      )}
 
       <Form {...form}>
         <form
@@ -321,10 +369,13 @@ export function PublicApplicationPage() {
             <CardContent className="space-y-6">
               <FormField
                 control={form.control}
-                name="whyBsfs"
+                name="aboutYou"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Why BSFS and why you?</FormLabel>
+                    <FormLabel>
+                      Tell me about yourself and why you would be a good fit for
+                      BSFS.
+                    </FormLabel>
                     <FormDescription>
                       Tell us about your motivation for joining and what you
                       would bring to the team.
@@ -343,16 +394,17 @@ export function PublicApplicationPage() {
               <Separator />
               <FormField
                 control={form.control}
-                name="interestingLearning"
+                name="marketsInsight"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      What&apos;s something interesting you&apos;ve learned
-                      recently?
+                      Tell me about an interesting thing you&apos;ve seen in the
+                      markets or in corporate finance (M&amp;A, Capital Markets,
+                      and PE Deals).
                     </FormLabel>
                     <FormDescription>
-                      This can be anything — a concept, a skill, a fact. We want
-                      to see how you think.
+                      Walk us through what caught your attention and why it
+                      interested you.
                     </FormDescription>
                     <FormControl>
                       <Textarea

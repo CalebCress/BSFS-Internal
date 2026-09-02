@@ -8,15 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SCORE_CATEGORIES, type ReviewType } from "@/lib/constants";
+import { REVIEW_CATEGORIES, type ScoreKey } from "@/lib/constants";
+import type { ReviewType } from "../../../../convex/reviewCategories";
 
 interface ExistingReview {
-  scores: {
-    overall: number;
-    motivation?: number;
-    experience?: number;
-    cultureFit?: number;
-  };
+  scores: Partial<Record<ScoreKey, number>>;
   comments?: string;
 }
 
@@ -26,8 +22,6 @@ interface ReviewFormProps {
   existingReview?: ExistingReview | null;
   onSuccess: () => void;
 }
-
-type ScoreKey = "overall" | "motivation" | "experience" | "cultureFit";
 
 function ScoreInput({
   value,
@@ -66,12 +60,14 @@ export function ReviewForm({
   const submitReview = useMutation(api.reviews.submit);
   const [submitting, setSubmitting] = useState(false);
 
-  const [scores, setScores] = useState<Record<ScoreKey, number | undefined>>({
-    overall: existingReview?.scores.overall,
-    motivation: existingReview?.scores.motivation,
-    experience: existingReview?.scores.experience,
-    cultureFit: existingReview?.scores.cultureFit,
-  });
+  // Which two factors are scored depends entirely on the review type.
+  const categories = REVIEW_CATEGORIES[reviewType];
+
+  const [scores, setScores] = useState<Partial<Record<ScoreKey, number>>>(() =>
+    Object.fromEntries(
+      categories.map((c) => [c.key, existingReview?.scores[c.key]])
+    )
+  );
   const [comments, setComments] = useState(existingReview?.comments ?? "");
   const [error, setError] = useState<string | null>(null);
 
@@ -83,8 +79,10 @@ export function ReviewForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!scores.overall) {
-      setError("Overall score is required");
+    // Both factors are required.
+    const missing = categories.find((c) => scores[c.key] === undefined);
+    if (missing) {
+      setError(`${missing.label} score is required`);
       return;
     }
 
@@ -93,12 +91,9 @@ export function ReviewForm({
       await submitReview({
         applicantId,
         reviewType,
-        scores: {
-          overall: scores.overall,
-          motivation: scores.motivation,
-          experience: scores.experience,
-          cultureFit: scores.cultureFit,
-        },
+        scores: Object.fromEntries(
+          categories.map((c) => [c.key, scores[c.key]])
+        ),
         comments: comments.trim() || undefined,
       });
       toast.success(existingReview ? "Review updated" : "Review submitted");
@@ -114,13 +109,11 @@ export function ReviewForm({
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
-      {SCORE_CATEGORIES.map((category) => (
+      {categories.map((category) => (
         <div key={category.key} className="space-y-2">
           <Label className="flex items-center gap-1.5">
             {category.label}
-            {category.required && (
-              <span className="text-xs text-destructive">*</span>
-            )}
+            <span className="text-xs text-destructive">*</span>
           </Label>
           <ScoreInput
             value={scores[category.key]}

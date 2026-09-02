@@ -18,3 +18,11 @@ export function hasCvReviewerAccess(profile: {
 }): boolean {
   return profile.specialRole === "cv_reviewer";
 }
+
+/**
+ * Strictly a board member. Distinct from hasAdminAccess, which also admits the
+ * `admin` special role - the review restrictions are about the board seat.
+ */
+export function isBoardMember(profile: { role: string }): boolean {
+  return profile.role === "board_member";
+}

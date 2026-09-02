@@ -217,11 +217,13 @@ export default defineSchema({
   reviews: defineTable({
     applicantId: v.id("applicants"),
     reviewerId: v.id("users"),
+    // Which two of these are required depends on reviewType; the server
+    // validates against REVIEW_CATEGORIES in convex/reviewCategories.ts.
     scores: v.object({
-      overall: v.number(),
-      motivation: v.optional(v.number()),
-      experience: v.optional(v.number()),
-      cultureFit: v.optional(v.number()),
+      cv: v.optional(v.number()),
+      responses: v.optional(v.number()),
+      technical: v.optional(v.number()),
+      behavioral: v.optional(v.number()),
     }),
     comments: v.optional(v.string()),
     reviewType: v.union(
@@ -233,7 +235,12 @@ export default defineSchema({
   })
     .index("by_applicant", ["applicantId"])
     .index("by_reviewer", ["reviewerId"])
-    .index("by_type", ["reviewType"]),
+    .index("by_type", ["reviewType"])
+    .index("by_applicant_reviewer_type", [
+      "applicantId",
+      "reviewerId",
+      "reviewType",
+    ]),
 
   // Stock tickers for thesis sharing
   stocks: defineTable({

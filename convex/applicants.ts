@@ -1,7 +1,19 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { hasAdminAccess } from "./permissions";
+import { hasAdminAccess, isBoardMember } from "./permissions";
+import {
+  isBoardOnlyReviewType,
+  stageToReviewType,
+  type ReviewType,
+} from "./reviewCategories";
+import {
+  averageScoreOf,
+  averageZScoreOf,
+  buildReviewerStats,
+  type ReviewLike,
+} from "./reviewStats";
+import { isUserSignedUpForInterview } from "./reviews";
 
 export const list = query({
   args: {
@@ -26,31 +38,65 @@ export const list = query({
           .collect()
       : await ctx.db.query("applicants").collect();
 
-    // Attach average overall score from reviews
-    return await Promise.all(
-      applicants.map(async (applicant) => {
-        const reviews = await ctx.db
-          .query("reviews")
-          .withIndex("by_applicant", (q) =>
-            q.eq("applicantId", applicant._id)
-          )
-          .collect();
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    const board = !!profile && isBoardMember(profile);
 
-        const overallScores = reviews.map((r) => r.scores.overall);
-        const averageOverall =
-          overallScores.length > 0
-            ? Math.round(
-                (overallScores.reduce((a, b) => a + b, 0) /
-                  overallScores.length) *
-                  10
-              ) / 10
-            : null;
+    // One scan of the whole reviews table rather than a query per applicant:
+    // z-scores need every reviewer's full distribution anyway.
+    const allReviews = await ctx.db.query("reviews").collect();
+    const stats = buildReviewerStats(allReviews as unknown as ReviewLike[]);
 
-        // bookingToken is a bearer capability - never ship it to list views.
-        const { bookingToken: _bookingToken, ...rest } = applicant;
-        return { ...rest, averageOverall };
-      })
-    );
+    const byApplicant = new Map<string, typeof allReviews>();
+    for (const review of allReviews) {
+      const key = review.applicantId.toString();
+      const existing = byApplicant.get(key);
+      if (existing) existing.push(review);
+      else byApplicant.set(key, [review]);
+    }
+
+    return applicants.map((applicant) => {
+      const mine = byApplicant.get(applicant._id.toString()) ?? [];
+
+      // Scores are scoped to the round the applicant is currently in, so the
+      // number always describes the decision actually in front of you. For
+      // accepted/rejected there is no "current" round, so fall back to the
+      // furthest round they were actually reviewed in.
+      let type: ReviewType;
+      if (applicant.stage === "accepted" || applicant.stage === "rejected") {
+        const present = new Set(mine.map((r) => r.reviewType));
+        type = present.has("assessment_center")
+          ? "assessment_center"
+          : present.has("telephone")
+            ? "telephone"
+            : "application";
+      } else {
+        type = stageToReviewType(applicant.stage);
+      }
+
+      const scoped = mine.filter((r) => r.reviewType === type);
+
+      // Aggregates summarise the underlying reviews, so they must obey the same
+      // board-only rule - otherwise a committee member could read the shape of
+      // application and telephone scores they aren't allowed to see.
+      const visible = board || !isBoardOnlyReviewType(type);
+
+      // bookingToken is a bearer capability - never ship it to list views.
+      const { bookingToken: _bookingToken, ...rest } = applicant;
+      return {
+        ...rest,
+        reviewType: visible ? type : null,
+        reviewCount: visible ? scoped.length : 0,
+        averageScore: visible
+          ? averageScoreOf(scoped as unknown as ReviewLike[])
+          : null,
+        averageZScore: visible
+          ? averageZScoreOf(stats, scoped as unknown as ReviewLike[])
+          : null,
+      };
+    });
   },
 });
 
@@ -63,12 +109,43 @@ export const getById = query({
     const applicant = await ctx.db.get(args.id);
     if (!applicant) return null;
 
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    // The CV and written answers are first-stage review material, so they are
+    // board-only - except for someone actually interviewing this applicant at
+    // the assessment centre, who needs the context to run the interview.
+    const canViewApplication =
+      (!!profile && isBoardMember(profile)) ||
+      (await isUserSignedUpForInterview(
+        ctx,
+        args.id,
+        "assessment_center",
+        userId
+      ));
+
+    const form = await ctx.db.get(applicant.applicationFormId);
+
+    // bookingToken is a bearer capability - it only ever leaves the server via
+    // the explicit ensureBookingToken mutation, never on a read.
+    const { bookingToken: _bookingToken, ...rest } = applicant;
+
+    if (!canViewApplication) {
+      return {
+        ...rest,
+        application: null,
+        cvUrl: null,
+        formTitle: form?.title ?? "Unknown Form",
+        canViewApplication: false as const,
+      };
+    }
+
     const application = await ctx.db
       .query("applications")
       .withIndex("by_applicant", (q) => q.eq("applicantId", args.id))
       .first();
-
-    const form = await ctx.db.get(applicant.applicationFormId);
 
     // Resolve CV download URL from storage
     let cvUrl: string | null = null;
@@ -76,15 +153,12 @@ export const getById = query({
       cvUrl = await ctx.storage.getUrl(application.cvStorageId);
     }
 
-    // bookingToken is a bearer capability - it only ever leaves the server via
-    // the explicit ensureBookingToken mutation, never on a read.
-    const { bookingToken: _bookingToken, ...rest } = applicant;
-
     return {
       ...rest,
       application: application ?? null,
       cvUrl,
       formTitle: form?.title ?? "Unknown Form",
+      canViewApplication: true as const,
     };
   },
 });

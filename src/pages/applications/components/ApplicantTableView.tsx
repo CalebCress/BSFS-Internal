@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StageBadge } from "./StageBadge";
+import { ZScoreBadge } from "./ScoreDisplay";
 import { ApplicantStageSelect } from "./ApplicantStageSelect";
 import { ArrowUpDown, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,10 +24,17 @@ type Applicant = {
   email: string;
   stage: Stage;
   appliedAt: number;
-  averageOverall: number | null;
+  averageScore: number | null;
+  averageZScore: number | null;
 };
 
-type SortField = "name" | "email" | "stage" | "appliedAt" | "averageOverall";
+type SortField =
+  | "name"
+  | "email"
+  | "stage"
+  | "appliedAt"
+  | "averageScore"
+  | "averageZScore";
 type SortDir = "asc" | "desc";
 
 interface ApplicantTableViewProps {
@@ -63,11 +71,18 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
         return dir * a.stage.localeCompare(b.stage);
       case "appliedAt":
         return dir * (a.appliedAt - b.appliedAt);
-      case "averageOverall": {
-        if (a.averageOverall == null && b.averageOverall == null) return 0;
-        if (a.averageOverall == null) return 1;
-        if (b.averageOverall == null) return -1;
-        return dir * (a.averageOverall - b.averageOverall);
+      case "averageScore": {
+        // Unscored applicants always sort last, in both directions.
+        if (a.averageScore == null && b.averageScore == null) return 0;
+        if (a.averageScore == null) return 1;
+        if (b.averageScore == null) return -1;
+        return dir * (a.averageScore - b.averageScore);
+      }
+      case "averageZScore": {
+        if (a.averageZScore == null && b.averageZScore == null) return 0;
+        if (a.averageZScore == null) return 1;
+        if (b.averageZScore == null) return -1;
+        return dir * (a.averageZScore - b.averageZScore);
       }
       default:
         return 0;
@@ -110,7 +125,10 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
               <SortButton field="appliedAt">Applied Date</SortButton>
             </TableHead>
             <TableHead>
-              <SortButton field="averageOverall">Avg. Score</SortButton>
+              <SortButton field="averageScore">Avg. Score</SortButton>
+            </TableHead>
+            <TableHead>
+              <SortButton field="averageZScore">Avg. Z</SortButton>
             </TableHead>
             <TableHead className="w-[60px]">Actions</TableHead>
           </TableRow>
@@ -119,7 +137,7 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
           {sorted.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="h-24 text-center text-muted-foreground"
               >
                 No applicants found.
@@ -145,16 +163,19 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
                   {formatDate(applicant.appliedAt)}
                 </TableCell>
                 <TableCell>
-                  {applicant.averageOverall != null ? (
+                  {applicant.averageScore != null ? (
                     <div className="flex items-center gap-1 text-sm">
                       <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                      {applicant.averageOverall.toFixed(1)}
+                      {applicant.averageScore.toFixed(1)}
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">
                       &mdash;
                     </span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <ZScoreBadge z={applicant.averageZScore} />
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <ApplicantStageSelect

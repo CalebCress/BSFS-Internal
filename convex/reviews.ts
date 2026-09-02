@@ -1,6 +1,22 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, mutation } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import { isBoardMember } from "./permissions";
+import {
+  REVIEW_CATEGORIES,
+  SCORE_MAX,
+  SCORE_MIN,
+  isBoardOnlyReviewType,
+  type ReviewType,
+  type ScoreKey,
+} from "./reviewCategories";
+import {
+  buildReviewerStats,
+  zScoresForReview,
+  type ReviewLike,
+} from "./reviewStats";
 
 const reviewTypeValidator = v.union(
   v.literal("application"),
@@ -8,39 +24,104 @@ const reviewTypeValidator = v.union(
   v.literal("assessment_center")
 );
 
-function validateScore(score: number, name: string) {
-  if (!Number.isInteger(score) || score < 1 || score > 5) {
-    throw new Error(`${name} score must be a whole number between 1 and 5`);
+/** Every score key, all optional - the required pair depends on reviewType. */
+const scoresValidator = v.object({
+  cv: v.optional(v.number()),
+  responses: v.optional(v.number()),
+  technical: v.optional(v.number()),
+  behavioral: v.optional(v.number()),
+});
+
+/**
+ * Require exactly the two factors that belong to this review type.
+ *
+ * Rejecting foreign keys matters beyond tidiness: a telephone review carrying
+ * a `cv` score would land in the wrong z-score population.
+ */
+function validateScores(
+  reviewType: ReviewType,
+  scores: Partial<Record<ScoreKey, number>>
+) {
+  const categories = REVIEW_CATEGORIES[reviewType];
+  const allowed = new Set<string>(categories.map((c) => c.key));
+
+  for (const key of Object.keys(scores)) {
+    if (scores[key as ScoreKey] === undefined) continue;
+    if (!allowed.has(key)) {
+      throw new Error(`"${key}" is not scored for this review type`);
+    }
+  }
+
+  for (const { key, label } of categories) {
+    const value = scores[key];
+    if (value === undefined) {
+      throw new Error(`${label} score is required`);
+    }
+    if (!Number.isInteger(value) || value < SCORE_MIN || value > SCORE_MAX) {
+      throw new Error(
+        `${label} score must be a whole number between ${SCORE_MIN} and ${SCORE_MAX}`
+      );
+    }
   }
 }
 
-// Check if a user is signed up for an applicant's interview of a given type
-async function isUserSignedUpForInterview(
-  ctx: { db: any },
-  applicantId: any,
+/**
+ * Application and telephone reviews are board-only, for both reading and
+ * writing. Assessment centre reviews stay open to committee members.
+ */
+async function canAccessReviewType(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  reviewType: ReviewType
+): Promise<boolean> {
+  if (!isBoardOnlyReviewType(reviewType)) return true;
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  return !!profile && isBoardMember(profile);
+}
+
+/**
+ * Is this user signed up to conduct the applicant's interview of this type?
+ *
+ * Exported because applicants.getById uses it to decide whether a non-board
+ * member may see the applicant's CV and written answers.
+ */
+export async function isUserSignedUpForInterview(
+  ctx: QueryCtx,
+  applicantId: Id<"applicants">,
   reviewType: string,
-  userId: any
+  userId: Id<"users">
 ): Promise<boolean> {
   if (reviewType === "application") return true;
 
   const slots = await ctx.db
     .query("interviewSlots")
-    .withIndex("by_applicant", (q: any) => q.eq("applicantId", applicantId))
+    .withIndex("by_applicant", (q) => q.eq("applicantId", applicantId))
     .collect();
 
-  const matchingSlots = slots.filter((s: any) => s.type === reviewType);
+  const matchingSlots = slots.filter((s) => s.type === reviewType);
 
   for (const slot of matchingSlots) {
     const signups = await ctx.db
       .query("interviewSignups")
-      .withIndex("by_slot", (q: any) => q.eq("slotId", slot._id))
+      .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
       .collect();
-    if (signups.some((s: any) => s.userId === userId)) {
+    if (signups.some((s) => s.userId === userId)) {
       return true;
     }
   }
 
   return false;
+}
+
+/** Reviewer stats need the whole table; it is small and read in one scan. */
+async function loadReviewerStats(ctx: QueryCtx) {
+  const all = await ctx.db.query("reviews").collect();
+  return buildReviewerStats(all as unknown as ReviewLike[]);
 }
 
 // Check if current user can submit a review of a given type for an applicant
@@ -52,6 +133,8 @@ export const canReview = query({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return false;
+
+    if (!(await canAccessReviewType(ctx, userId, args.reviewType))) return false;
 
     return await isUserSignedUpForInterview(
       ctx,
@@ -67,17 +150,16 @@ export const submit = mutation({
   args: {
     applicantId: v.id("applicants"),
     reviewType: reviewTypeValidator,
-    scores: v.object({
-      overall: v.number(),
-      motivation: v.optional(v.number()),
-      experience: v.optional(v.number()),
-      cultureFit: v.optional(v.number()),
-    }),
+    scores: scoresValidator,
     comments: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+
+    if (!(await canAccessReviewType(ctx, userId, args.reviewType))) {
+      throw new Error("Only board members can review this stage");
+    }
 
     // Restrict telephone/AC reviews to signed-up interviewers
     const allowed = await isUserSignedUpForInterview(
@@ -92,24 +174,19 @@ export const submit = mutation({
       );
     }
 
-    // Validate score ranges
-    validateScore(args.scores.overall, "Overall");
-    if (args.scores.motivation !== undefined)
-      validateScore(args.scores.motivation, "Motivation");
-    if (args.scores.experience !== undefined)
-      validateScore(args.scores.experience, "Experience");
-    if (args.scores.cultureFit !== undefined)
-      validateScore(args.scores.cultureFit, "Culture Fit");
+    validateScores(args.reviewType, args.scores);
 
-    // Check for existing review by this user for this applicant + type
-    const existingReviews = await ctx.db
+    // One review per (applicant, reviewer, type) - resolved by index rather
+    // than scanning every review for the applicant.
+    const myExisting = await ctx.db
       .query("reviews")
-      .withIndex("by_applicant", (q) => q.eq("applicantId", args.applicantId))
-      .collect();
-
-    const myExisting = existingReviews.find(
-      (r) => r.reviewerId === userId && r.reviewType === args.reviewType
-    );
+      .withIndex("by_applicant_reviewer_type", (q) =>
+        q
+          .eq("applicantId", args.applicantId)
+          .eq("reviewerId", userId)
+          .eq("reviewType", args.reviewType)
+      )
+      .first();
 
     if (myExisting) {
       // Update existing review
@@ -143,6 +220,13 @@ export const listByApplicant = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
+    if (
+      args.reviewType &&
+      !(await canAccessReviewType(ctx, userId, args.reviewType))
+    ) {
+      return [];
+    }
+
     let reviews = await ctx.db
       .query("reviews")
       .withIndex("by_applicant", (q) => q.eq("applicantId", args.applicantId))
@@ -150,7 +234,16 @@ export const listByApplicant = query({
 
     if (args.reviewType) {
       reviews = reviews.filter((r) => r.reviewType === args.reviewType);
+    } else {
+      // Unfiltered: drop any board-only types this user may not see.
+      const permitted = new Set<string>();
+      for (const type of ["application", "telephone", "assessment_center"] as const) {
+        if (await canAccessReviewType(ctx, userId, type)) permitted.add(type);
+      }
+      reviews = reviews.filter((r) => permitted.has(r.reviewType));
     }
+
+    const stats = await loadReviewerStats(ctx);
 
     return await Promise.all(
       reviews.map(async (review) => {
@@ -161,6 +254,7 @@ export const listByApplicant = query({
         return {
           ...review,
           reviewerName: profile?.displayName ?? "Unknown",
+          zScores: zScoresForReview(stats, review as unknown as ReviewLike),
         };
       })
     );
@@ -177,16 +271,17 @@ export const getMyReview = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
 
-    const reviews = await ctx.db
-      .query("reviews")
-      .withIndex("by_applicant", (q) => q.eq("applicantId", args.applicantId))
-      .collect();
+    if (!(await canAccessReviewType(ctx, userId, args.reviewType))) return null;
 
-    return (
-      reviews.find(
-        (r) => r.reviewerId === userId && r.reviewType === args.reviewType
-      ) ?? null
-    );
+    return await ctx.db
+      .query("reviews")
+      .withIndex("by_applicant_reviewer_type", (q) =>
+        q
+          .eq("applicantId", args.applicantId)
+          .eq("reviewerId", userId)
+          .eq("reviewType", args.reviewType)
+      )
+      .first();
   },
 });
 
@@ -200,6 +295,13 @@ export const getAggregateScores = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
 
+    if (
+      args.reviewType &&
+      !(await canAccessReviewType(ctx, userId, args.reviewType))
+    ) {
+      return null;
+    }
+
     let reviews = await ctx.db
       .query("reviews")
       .withIndex("by_applicant", (q) => q.eq("applicantId", args.applicantId))
@@ -209,31 +311,26 @@ export const getAggregateScores = query({
       reviews = reviews.filter((r) => r.reviewType === args.reviewType);
     }
 
-    if (reviews.length === 0) {
-      return {
-        overall: null,
-        motivation: null,
-        experience: null,
-        cultureFit: null,
-        count: 0,
-      };
-    }
+    // Categories are per review type, so an aggregate only makes sense for one
+    // type at a time; default to application when unfiltered.
+    const type: ReviewType = args.reviewType ?? "application";
 
-    const avg = (values: (number | undefined)[]) => {
-      const defined = values.filter((v): v is number => v !== undefined);
+    const avg = (key: ScoreKey) => {
+      const defined = reviews
+        .map((r) => r.scores[key])
+        .filter((v): v is number => v !== undefined);
       if (defined.length === 0) return null;
       return (
-        Math.round(
-          (defined.reduce((a, b) => a + b, 0) / defined.length) * 10
-        ) / 10
+        Math.round((defined.reduce((a, b) => a + b, 0) / defined.length) * 10) / 10
       );
     };
 
     return {
-      overall: avg(reviews.map((r) => r.scores.overall)),
-      motivation: avg(reviews.map((r) => r.scores.motivation)),
-      experience: avg(reviews.map((r) => r.scores.experience)),
-      cultureFit: avg(reviews.map((r) => r.scores.cultureFit)),
+      categories: REVIEW_CATEGORIES[type].map(({ key, label }) => ({
+        key,
+        label,
+        average: avg(key),
+      })),
       count: reviews.length,
     };
   },
@@ -259,6 +356,9 @@ export const listUnreviewed = query({
     if (!userId) return [];
 
     const effectiveType = args.reviewType ?? "application";
+
+    if (!(await canAccessReviewType(ctx, userId, effectiveType))) return [];
+
     const matchingStage = reviewTypeToStage(effectiveType);
 
     // Get all reviews by this user
@@ -311,6 +411,7 @@ export const listUnreviewed = query({
       );
     }
 
-    return candidates;
+    // bookingToken is a bearer capability - strip it, as list/getById do.
+    return candidates.map(({ bookingToken: _bookingToken, ...rest }) => rest);
   },
 });

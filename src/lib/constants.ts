@@ -32,12 +32,18 @@ export const REVIEW_TYPES = {
 
 export type ReviewType = keyof typeof REVIEW_TYPES;
 
-export const SCORE_CATEGORIES = [
-  { key: "overall" as const, label: "Overall", required: true },
-  { key: "motivation" as const, label: "Motivation", required: false },
-  { key: "experience" as const, label: "Experience", required: false },
-  { key: "cultureFit" as const, label: "Culture Fit", required: false },
-] as const;
+// Review categories and the 1-5 scale live in convex/reviewCategories.ts so the
+// server validates against exactly what the UI renders. Re-exported here so
+// existing "@/lib/constants" imports keep working.
+export {
+  REVIEW_CATEGORIES,
+  SCORE_MIN,
+  SCORE_MAX,
+  BOARD_ONLY_REVIEW_TYPES,
+  isBoardOnlyReviewType,
+  stageToReviewType,
+} from "../../convex/reviewCategories";
+export type { ScoreKey } from "../../convex/reviewCategories";
 
 // Stock section constants
 
