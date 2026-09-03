@@ -120,3 +120,79 @@ export function saveDraft(
     // A failed draft save must never block the form.
   }
 }
+
+/**
+ * Record of a completed submission, kept on this device for the same month as
+ * a draft.
+ *
+ * Applicants close the tab and come back wondering whether it went through, so
+ * reopening the page shows their status instead of a blank form. It is a local
+ * receipt, not proof - the server is the record of what was actually received.
+ */
+
+const SUBMITTED_STORAGE_KEY = "bsfs_apply_submitted";
+
+export type StoredSubmission = {
+  /** Which round it was submitted to, so a new round starts fresh. */
+  formId: string | null;
+  submittedAt: number;
+  email: string;
+};
+
+export function clearSubmission(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(SUBMITTED_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable (private browsing); nothing to recover from.
+  }
+}
+
+/** Read the saved receipt, clearing it when it is older than a month or bad. */
+export function loadSubmission(): StoredSubmission | null {
+  if (typeof window === "undefined") return null;
+
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(SUBMITTED_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredSubmission>;
+    if (typeof parsed?.submittedAt !== "number") throw new Error("bad receipt");
+
+    if (Date.now() - parsed.submittedAt > DRAFT_MAX_AGE_MS) {
+      clearSubmission();
+      return null;
+    }
+
+    return {
+      formId: typeof parsed.formId === "string" ? parsed.formId : null,
+      submittedAt: parsed.submittedAt,
+      email: asString(parsed.email),
+    };
+  } catch {
+    clearSubmission();
+    return null;
+  }
+}
+
+export function saveSubmission(email: string, formId: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const submission: StoredSubmission = {
+      formId,
+      submittedAt: Date.now(),
+      email,
+    };
+    window.localStorage.setItem(
+      SUBMITTED_STORAGE_KEY,
+      JSON.stringify(submission)
+    );
+  } catch {
+    // A failed receipt save must never break a successful submission.
+  }
+}

@@ -18,7 +18,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,9 +30,12 @@ import { CheckCircle, Upload, X, FileText, Info } from "lucide-react";
 import {
   EMPTY_DRAFT,
   clearDraft,
+  clearSubmission,
   draftHasContent,
   loadDraft,
+  loadSubmission,
   saveDraft,
+  saveSubmission,
 } from "./applyDraft";
 
 const applicationSchema = z.object({
@@ -60,6 +62,7 @@ export function PublicApplicationPage() {
   // Read once, before the form exists, so the saved answers become the initial
   // values rather than being written in afterwards.
   const [restoredDraft] = useState(loadDraft);
+  const [restoredSubmission, setRestoredSubmission] = useState(loadSubmission);
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -94,6 +97,16 @@ export function PublicApplicationPage() {
     }
   }, [activeForm, restoredDraft, form]);
 
+  // Likewise a receipt from a previous round: having applied last semester
+  // must not lock someone out of applying this one.
+  useEffect(() => {
+    if (!activeForm || !restoredSubmission) return;
+    if (restoredSubmission.formId !== activeForm._id) {
+      clearSubmission();
+      setRestoredSubmission(null);
+    }
+  }, [activeForm, restoredSubmission]);
+
   const restoredFromDraft =
     !!restoredDraft && draftHasContent(restoredDraft.values);
 
@@ -126,8 +139,12 @@ export function PublicApplicationPage() {
     );
   }
 
-  // Success state
-  if (submitted) {
+  // Success state - shown straight after submitting, and again for a month
+  // afterwards from the receipt saved on this device.
+  const remembered =
+    restoredSubmission?.formId === activeForm._id ? restoredSubmission : null;
+
+  if (submitted || remembered) {
     return (
       <div className="mx-auto max-w-2xl">
         <Card>
@@ -138,6 +155,32 @@ export function PublicApplicationPage() {
               Your application for the {activeForm.semester} round has been
               submitted successfully. We will be in touch via email.
             </p>
+            {remembered && !submitted && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Submitted on{" "}
+                {new Date(remembered.submittedAt).toLocaleDateString(undefined, {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+                {remembered.email ? ` as ${remembered.email}` : ""}.
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="mt-2 text-muted-foreground"
+              onClick={() => {
+                clearSubmission();
+                clearDraft();
+                setRestoredSubmission(null);
+                setSubmitted(false);
+                form.reset(EMPTY_DRAFT);
+              }}
+            >
+              Not you? Start a new application
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -175,6 +218,7 @@ export function PublicApplicationPage() {
 
       // Only on success - a failed submit must keep their answers.
       clearDraft();
+      saveSubmission(data.email, activeForm._id);
       setSubmitted(true);
     } catch (error) {
       toast.error(
@@ -376,10 +420,6 @@ export function PublicApplicationPage() {
                       Tell me about yourself and why you would be a good fit for
                       BSFS.
                     </FormLabel>
-                    <FormDescription>
-                      Tell us about your motivation for joining and what you
-                      would bring to the team.
-                    </FormDescription>
                     <FormControl>
                       <Textarea
                         placeholder="Write your answer here..."
@@ -402,10 +442,6 @@ export function PublicApplicationPage() {
                       markets or in corporate finance (M&amp;A, Capital Markets,
                       and PE Deals).
                     </FormLabel>
-                    <FormDescription>
-                      Walk us through what caught your attention and why it
-                      interested you.
-                    </FormDescription>
                     <FormControl>
                       <Textarea
                         placeholder="Write your answer here..."
