@@ -36,6 +36,7 @@ import {
   Mail,
   Phone,
   Calendar,
+  GraduationCap,
   FileText,
   Download,
   ExternalLink,
@@ -424,6 +425,16 @@ export function ApplicantDetailPage() {
                   >
                     {applicant.phone}
                   </a>
+                </div>
+              )}
+              {(applicant.course || applicant.graduationYear) && (
+                <div className="flex items-center gap-3">
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">
+                    {[applicant.course, applicant.graduationYear]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
                 </div>
               )}
               <div className="flex items-center gap-3">

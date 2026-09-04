@@ -16,6 +16,8 @@ export const submit = mutation({
     lastName: v.string(),
     email: v.string(),
     phone: v.string(),
+    graduationYear: v.string(),
+    course: v.string(),
     aboutYou: v.string(),
     recentHeadline: v.string(),
     cvStorageId: v.optional(v.id("_storage")),
@@ -34,6 +36,18 @@ export const submit = mutation({
     if (!args.lastName.trim()) throw new Error("Last name is required.");
     if (!args.email.trim()) throw new Error("Email is required.");
     if (!args.phone.trim()) throw new Error("Phone number is required.");
+    if (!args.course.trim()) throw new Error("Course is required.");
+
+    // Taken as text so a stray space or a typed year never becomes NaN, then
+    // checked before it is stored as a number.
+    const graduationYear = Number(args.graduationYear.trim());
+    if (
+      !/^\d{4}$/.test(args.graduationYear.trim()) ||
+      graduationYear < 2000 ||
+      graduationYear > 2100
+    ) {
+      throw new Error("Please give your graduation year as four digits.");
+    }
     if (!args.aboutYou.trim())
       throw new Error("Please answer the first question.");
     if (!args.recentHeadline.trim())
@@ -77,6 +91,8 @@ export const submit = mutation({
       lastName: args.lastName.trim(),
       email: args.email.trim().toLowerCase(),
       phone: args.phone.trim(),
+      graduationYear,
+      course: args.course.trim(),
       stage: "applied",
       applicationFormId: args.applicationFormId,
       appliedAt: now,

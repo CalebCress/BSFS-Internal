@@ -69,6 +69,10 @@ export default defineSchema({
     lastName: v.string(),
     email: v.string(),
     phone: v.optional(v.string()),
+    // Optional because applicants who applied before these fields existed
+    // have neither. Both are required on new submissions.
+    graduationYear: v.optional(v.number()),
+    course: v.optional(v.string()),
     stage: v.union(
       v.literal("applied"),
       v.literal("telephone"),

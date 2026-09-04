@@ -17,6 +17,8 @@ export type DraftValues = {
   lastName: string;
   email: string;
   phone: string;
+  graduationYear: string;
+  course: string;
   aboutYou: string;
   recentHeadline: string;
 };
@@ -26,6 +28,8 @@ export const EMPTY_DRAFT: DraftValues = {
   lastName: "",
   email: "",
   phone: "",
+  graduationYear: "",
+  course: "",
   aboutYou: "",
   recentHeadline: "",
 };
@@ -84,6 +88,8 @@ export function loadDraft(): StoredDraft | null {
         lastName: asString(values.lastName),
         email: asString(values.email),
         phone: asString(values.phone),
+        graduationYear: asString(values.graduationYear),
+        course: asString(values.course),
         aboutYou: asString(values.aboutYou),
         recentHeadline: asString(values.recentHeadline),
       },

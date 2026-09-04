@@ -44,6 +44,10 @@ const applicationSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(1, "Phone number is required"),
+  graduationYear: z
+    .string()
+    .regex(/^\d{4}$/, "Enter your graduation year as four digits"),
+  course: z.string().min(1, "Course is required"),
   aboutYou: z.string().min(50, "Please write at least 50 characters"),
   recentHeadline: z.string().min(50, "Please write at least 50 characters"),
 });
@@ -212,6 +216,8 @@ export function PublicApplicationPage() {
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
+        graduationYear: data.graduationYear,
+        course: data.course,
         aboutYou: data.aboutYou,
         recentHeadline: data.recentHeadline,
         cvStorageId,
@@ -345,6 +351,42 @@ export function PublicApplicationPage() {
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="graduationYear"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year</FormLabel>
+                      <FormControl>
+                        {/* inputMode numeric for a phone keypad, but a text
+                            input: type="number" adds spinners and lets a
+                            scroll wheel silently change the year. */}
+                        <Input
+                          inputMode="numeric"
+                          maxLength={4}
+                          placeholder="2029"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="course"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course</FormLabel>
+                      <FormControl>
+                        <Input placeholder="BIEF" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 
