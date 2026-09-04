@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CheckCircle, Upload, X, FileText, Info } from "lucide-react";
+import { MAX_CV_BYTES, MAX_CV_LABEL } from "../../../convex/uploadLimits";
 import {
   EMPTY_DRAFT,
   clearDraft,
@@ -243,8 +244,8 @@ export function PublicApplicationPage() {
         toast.error("Please upload a PDF or Word document");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be under 5MB");
+      if (file.size > MAX_CV_BYTES) {
+        toast.error(`File size must be under ${MAX_CV_LABEL}`);
         return;
       }
       setCvFile(file);
@@ -352,7 +353,7 @@ export function PublicApplicationPage() {
             <CardHeader>
               <CardTitle>Resume / CV</CardTitle>
               <CardDescription>
-                Upload your resume or CV (PDF or Word, max 5MB)
+                Upload your resume or CV (PDF or Word, max {MAX_CV_LABEL})
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -391,7 +392,7 @@ export function PublicApplicationPage() {
                   <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium">Click to upload</p>
                   <p className="text-xs text-muted-foreground">
-                    PDF or Word document, max 5MB
+                    PDF or Word document, max {MAX_CV_LABEL}
                   </p>
                 </div>
               )}

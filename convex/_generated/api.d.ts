@@ -37,6 +37,7 @@ import type * as reviewStats from "../reviewStats.js";
 import type * as reviews from "../reviews.js";
 import type * as stockTheses from "../stockTheses.js";
 import type * as stocks from "../stocks.js";
+import type * as uploadLimits from "../uploadLimits.js";
 
 import type {
   ApiFromModules,
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   reviews: typeof reviews;
   stockTheses: typeof stockTheses;
   stocks: typeof stocks;
+  uploadLimits: typeof uploadLimits;
 }>;
 
 /**

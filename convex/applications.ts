@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { MAX_CV_BYTES, MAX_CV_LABEL } from "./uploadLimits";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -37,6 +38,16 @@ export const submit = mutation({
       throw new Error("Please answer the first question.");
     if (!args.recentHeadline.trim())
       throw new Error("Please answer the second question.");
+
+    // The browser checks this before uploading, but an upload URL can be
+    // posted to directly, so the size is confirmed against the stored file.
+    if (args.cvStorageId) {
+      const file = await ctx.db.system.get(args.cvStorageId);
+      if (!file) throw new Error("That CV upload could not be found.");
+      if (file.size > MAX_CV_BYTES) {
+        throw new Error(`Your CV must be under ${MAX_CV_LABEL}.`);
+      }
+    }
 
     // Check for duplicate email within this round
     const existingApplicant = await ctx.db
