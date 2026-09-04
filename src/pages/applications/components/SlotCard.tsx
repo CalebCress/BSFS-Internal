@@ -34,6 +34,8 @@ interface ApplicantOption {
 interface SlotCardProps {
   slot: SlotData;
   hasAdminAccess: boolean;
+  /** Deleting is board-only, tighter than the admin actions above. */
+  canDelete?: boolean;
   currentUserId: string | undefined;
   onSignup: () => void;
   onCancel: () => void;
@@ -60,6 +62,7 @@ const TYPE_STYLES = {
 export function SlotCard({
   slot,
   hasAdminAccess,
+  canDelete,
   currentUserId,
   onSignup,
   onCancel,
@@ -96,7 +99,7 @@ export function SlotCard({
             <Badge variant="secondary" className={typeStyle.color}>
               {typeStyle.label}
             </Badge>
-            {hasAdminAccess && onDelete && (
+            {canDelete && onDelete && (
               <Button
                 variant="ghost"
                 size="sm"

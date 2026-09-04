@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BatchCreateDialog } from "./components/BatchCreateDialog";
@@ -23,6 +31,17 @@ import { toast } from "sonner";
 
 type SlotType = "telephone" | "assessment_center";
 
+/** The bits of a slot the delete confirmation needs to describe it. */
+type SlotToDelete = {
+  _id: Id<"interviewSlots">;
+  date: string;
+  startTime: string;
+  endTime: string;
+  tableNumber?: number;
+  applicantName: string | null;
+  signupCount: number;
+};
+
 /** "HH:MM" as minutes past midnight, for comparing time windows. */
 const toMinutes = (time: string) => {
   const [h, m] = time.split(":").map(Number);
@@ -30,10 +49,13 @@ const toMinutes = (time: string) => {
 };
 
 export function InterviewsPage() {
-  const { profile, hasAdminAccess } = useCurrentProfile();
+  const { profile, hasAdminAccess, isBoardMember } = useCurrentProfile();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | SlotType>("all");
   const [assignedOnly, setAssignedOnly] = useState(false);
+  // Deleting a slot also drops its signups, so it is confirmed before it runs.
+  const [pendingDelete, setPendingDelete] = useState<SlotToDelete | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Queries
   const slots = useQuery(api.interviewSlots.list, {});
@@ -139,14 +161,19 @@ export function InterviewsPage() {
     }
   };
 
-  const handleDelete = async (slotId: Id<"interviewSlots">) => {
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      await deleteMutation({ slotId });
+      await deleteMutation({ slotId: pendingDelete._id });
       toast.success("Slot deleted");
+      setPendingDelete(null);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to delete slot"
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -284,10 +311,11 @@ export function InterviewsPage() {
                       key={slot._id}
                       slot={slot}
                       hasAdminAccess={hasAdminAccess}
+                      canDelete={isBoardMember}
                       currentUserId={currentUserId}
                       onSignup={() => void handleSignup(slot._id)}
                       onCancel={() => void handleCancel(slot._id)}
-                      onDelete={() => void handleDelete(slot._id)}
+                      onDelete={() => setPendingDelete(slot)}
                       onReassign={(applicantId) =>
                         void handleReassign(slot._id, applicantId)
                       }
@@ -373,6 +401,70 @@ export function InterviewsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Confirm deleting a slot */}
+      <Dialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this slot?</DialogTitle>
+            <DialogDescription>
+              {pendingDelete && (
+                <>
+                  {formatDate(pendingDelete.date)}, {pendingDelete.startTime}
+                  &ndash;{pendingDelete.endTime}
+                  {pendingDelete.tableNumber !== undefined &&
+                    ` (Table ${pendingDelete.tableNumber})`}
+                  . This can&apos;t be undone.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingDelete &&
+            (pendingDelete.applicantName || pendingDelete.signupCount > 0) && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium">This slot is in use:</p>
+                <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+                  {pendingDelete.applicantName && (
+                    <li>
+                      {pendingDelete.applicantName} is booked into it and will
+                      lose their interview time.
+                    </li>
+                  )}
+                  {pendingDelete.signupCount > 0 && (
+                    <li>
+                      {pendingDelete.signupCount} interviewer
+                      {pendingDelete.signupCount !== 1 ? "s are" : " is"} signed
+                      up and will be un-signed-up.
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+              disabled={deleting}
+            >
+              Keep slot
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete slot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Batch Create Dialog */}
       <BatchCreateDialog

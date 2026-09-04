@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { hasAdminAccess } from "./permissions";
+import { hasAdminAccess, isBoardMember } from "./permissions";
 
 /** Convert "HH:MM" to total minutes for arithmetic */
 function toMinutes(time: string): number {
@@ -229,7 +229,10 @@ export const remove = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile || !hasAdminAccess(profile)) {
+    // Strictly the board seat, not hasAdminAccess: deleting a slot destroys an
+    // applicant's booked time and every interviewer signup on it, so it is
+    // held tighter than creating or reassigning one.
+    if (!profile || !isBoardMember(profile) || profile.status !== "approved") {
       throw new Error("Only board members can delete slots");
     }
 
