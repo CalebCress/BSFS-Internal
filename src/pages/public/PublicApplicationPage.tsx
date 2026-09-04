@@ -360,7 +360,7 @@ export function PublicApplicationPage() {
                   name="graduationYear"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Year</FormLabel>
+                      <FormLabel>Graduation Year</FormLabel>
                       <FormControl>
                         {/* inputMode numeric for a phone keypad, but a text
                             input: type="number" adds spinners and lets a
