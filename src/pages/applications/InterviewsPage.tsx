@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BatchCreateDialog } from "./components/BatchCreateDialog";
 import { SlotCard } from "./components/SlotCard";
+import { ManageInterviewersDialog } from "./components/ManageInterviewersDialog";
 import { Plus, Calendar, Clock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +57,8 @@ export function InterviewsPage() {
   // Deleting a slot also drops its signups, so it is confirmed before it runs.
   const [pendingDelete, setPendingDelete] = useState<SlotToDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [managingSlotId, setManagingSlotId] =
+    useState<Id<"interviewSlots"> | null>(null);
 
   // Queries
   const slots = useQuery(api.interviewSlots.list, {});
@@ -160,6 +163,11 @@ export function InterviewsPage() {
       setLoadingSlot(null);
     }
   };
+
+  // Looked up by id rather than held in state: after a move, Convex pushes new
+  // slot data and the dialog must show the roster it just changed, not a stale
+  // copy captured when it opened.
+  const managingSlot = slots?.find((s) => s._id === managingSlotId) ?? null;
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
@@ -316,6 +324,11 @@ export function InterviewsPage() {
                       onSignup={() => void handleSignup(slot._id)}
                       onCancel={() => void handleCancel(slot._id)}
                       onDelete={() => setPendingDelete(slot)}
+                      onManageInterviewers={
+                        isBoardMember
+                          ? () => setManagingSlotId(slot._id)
+                          : undefined
+                      }
                       onReassign={(applicantId) =>
                         void handleReassign(slot._id, applicantId)
                       }
@@ -401,6 +414,16 @@ export function InterviewsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Board members: move interviewers between slots */}
+      <ManageInterviewersDialog
+        slot={managingSlot}
+        allSlots={slots ?? []}
+        onOpenChange={(open) => {
+          if (!open) setManagingSlotId(null);
+        }}
+        formatDate={formatDate}
+      />
 
       {/* Confirm deleting a slot */}
       <Dialog

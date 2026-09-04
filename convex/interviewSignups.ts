@@ -1,27 +1,35 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-/** "HH:MM" as minutes past midnight, for comparing time windows. */
-function toMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-type TimeWindow = { date: string; startTime: string; endTime: string };
+import type { MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { isBoardMember } from "./permissions";
+import { overlaps, type TimeWindow } from "./interviewTimes";
 
 /**
- * Do two slots occupy the same person at the same moment?
+ * The signup of `userId` that clashes with `slot`, ignoring `exceptSlotId`.
  *
- * Touching windows (10:00-10:30 and 10:30-11:00) do NOT overlap - back-to-back
- * interviews are normal and must stay bookable.
+ * Shared by self-signup and by a board member moving someone: a rearranged
+ * schedule must not double-book an interviewer any more than a careless
+ * self-signup can.
  */
-function overlaps(a: TimeWindow, b: TimeWindow): boolean {
-  if (a.date !== b.date) return false;
-  return (
-    toMinutes(a.startTime) < toMinutes(b.endTime) &&
-    toMinutes(b.startTime) < toMinutes(a.endTime)
-  );
+async function findConflict(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  slot: TimeWindow,
+  exceptSlotId?: Id<"interviewSlots">
+): Promise<Doc<"interviewSlots"> | null> {
+  const signups = await ctx.db
+    .query("interviewSignups")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+
+  for (const signup of signups) {
+    if (signup.slotId === exceptSlotId) continue;
+    const other = await ctx.db.get(signup.slotId);
+    if (other && overlaps(slot, other)) return other;
+  }
+  return null;
 }
 
 // Sign up for an interview slot
@@ -55,19 +63,12 @@ export const signup = mutation({
     // You can only be in one interview at a time. This is easy to get wrong by
     // accident: an assessment centre runs several tables in the same half hour,
     // so two adjacent cards on the schedule can be the very same time window.
-    const mySignups = await ctx.db
-      .query("interviewSignups")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-
-    for (const mine of mySignups) {
-      const other = await ctx.db.get(mine.slotId);
-      if (!other || other._id === slot._id) continue;
-      if (!overlaps(slot, other)) continue;
+    const conflict = await findConflict(ctx, userId, slot, slot._id);
+    if (conflict) {
       throw new Error(
-        `You are already signed up for ${other.startTime}-${other.endTime} on ` +
-          `${other.date}, which overlaps this slot. Cancel that signup first ` +
-          `if you meant to move.`
+        `You are already signed up for ${conflict.startTime}-${conflict.endTime} ` +
+          `on ${conflict.date}, which overlaps this slot. Cancel that signup ` +
+          `first if you meant to move.`
       );
     }
 
@@ -152,5 +153,108 @@ export const listMySignups = query({
           return a.slot.date.localeCompare(b.slot.date);
         return a.slot.startTime.localeCompare(b.slot.startTime);
       });
+  },
+});
+
+/**
+ * Move an interviewer from one slot to another (board members only).
+ *
+ * The signup row is patched rather than deleted and recreated, so the original
+ * signedUpAt survives the move - who volunteered first still reads correctly
+ * after the board rearranges a day.
+ *
+ * Every rule that applies to signing yourself up applies here too. A board
+ * member rearranging a schedule at speed is at least as likely to create a
+ * double-booking as the person clicking one slot at a time.
+ */
+export const moveInterviewer = mutation({
+  args: {
+    fromSlotId: v.id("interviewSlots"),
+    toSlotId: v.id("interviewSlots"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const callerId = await getAuthUserId(ctx);
+    if (!callerId) throw new Error("Not authenticated");
+
+    const caller = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", callerId))
+      .unique();
+    if (!caller || !isBoardMember(caller) || caller.status !== "approved") {
+      throw new Error("Only board members can move interviewers");
+    }
+
+    if (args.fromSlotId === args.toSlotId) return;
+
+    const target = await ctx.db.get(args.toSlotId);
+    if (!target) throw new Error("That slot no longer exists");
+
+    const signup = (
+      await ctx.db
+        .query("interviewSignups")
+        .withIndex("by_slot", (q) => q.eq("slotId", args.fromSlotId))
+        .collect()
+    ).find((row) => row.userId === args.userId);
+    if (!signup) {
+      throw new Error("That interviewer is not signed up for this slot");
+    }
+
+    const targetSignups = await ctx.db
+      .query("interviewSignups")
+      .withIndex("by_slot", (q) => q.eq("slotId", args.toSlotId))
+      .collect();
+
+    if (targetSignups.some((row) => row.userId === args.userId)) {
+      throw new Error("They are already signed up for that slot");
+    }
+    if (targetSignups.length >= target.maxInterviewers) {
+      throw new Error("That slot is already at capacity");
+    }
+
+    // Their other commitments still stand - just not the one being vacated.
+    const conflict = await findConflict(
+      ctx,
+      args.userId,
+      target,
+      args.fromSlotId
+    );
+    if (conflict) {
+      throw new Error(
+        `They are already interviewing at ${conflict.startTime}-` +
+          `${conflict.endTime} on ${conflict.date}, which overlaps that slot.`
+      );
+    }
+
+    await ctx.db.patch(signup._id, { slotId: args.toSlotId });
+  },
+});
+
+/** Remove an interviewer from a slot (board members only). */
+export const removeInterviewer = mutation({
+  args: { slotId: v.id("interviewSlots"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const callerId = await getAuthUserId(ctx);
+    if (!callerId) throw new Error("Not authenticated");
+
+    const caller = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", callerId))
+      .unique();
+    if (!caller || !isBoardMember(caller) || caller.status !== "approved") {
+      throw new Error("Only board members can remove interviewers");
+    }
+
+    const signup = (
+      await ctx.db
+        .query("interviewSignups")
+        .withIndex("by_slot", (q) => q.eq("slotId", args.slotId))
+        .collect()
+    ).find((row) => row.userId === args.userId);
+    if (!signup) {
+      throw new Error("That interviewer is not signed up for this slot");
+    }
+
+    await ctx.db.delete(signup._id);
   },
 });

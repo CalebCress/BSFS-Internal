@@ -25,6 +25,7 @@ import type * as interviewBooking from "../interviewBooking.js";
 import type * as interviewInvites from "../interviewInvites.js";
 import type * as interviewSignups from "../interviewSignups.js";
 import type * as interviewSlots from "../interviewSlots.js";
+import type * as interviewTimes from "../interviewTimes.js";
 import type * as massive from "../massive.js";
 import type * as memberTheses from "../memberTheses.js";
 import type * as permissions from "../permissions.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   interviewInvites: typeof interviewInvites;
   interviewSignups: typeof interviewSignups;
   interviewSlots: typeof interviewSlots;
+  interviewTimes: typeof interviewTimes;
   massive: typeof massive;
   memberTheses: typeof memberTheses;
   permissions: typeof permissions;

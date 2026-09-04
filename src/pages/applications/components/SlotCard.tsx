@@ -22,6 +22,7 @@ interface SlotData {
   applicantId?: Id<"applicants">;
   signupCount: number;
   signupUserIds: string[];
+  interviewers: { userId: Id<"users">; name: string }[];
   applicantName: string | null;
 }
 
@@ -36,6 +37,8 @@ interface SlotCardProps {
   hasAdminAccess: boolean;
   /** Deleting is board-only, tighter than the admin actions above. */
   canDelete?: boolean;
+  /** Board members can rearrange who is interviewing in this slot. */
+  onManageInterviewers?: () => void;
   currentUserId: string | undefined;
   onSignup: () => void;
   onCancel: () => void;
@@ -63,6 +66,7 @@ export function SlotCard({
   slot,
   hasAdminAccess,
   canDelete,
+  onManageInterviewers,
   currentUserId,
   onSignup,
   onCancel,
@@ -122,21 +126,37 @@ export function SlotCard({
           )}
         </div>
 
-        {/* Interviewer count */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>
-              {slot.signupCount} / {slot.maxInterviewers} interviewers
-            </span>
+        {/* Interviewers */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>
+                {slot.signupCount} / {slot.maxInterviewers} interviewers
+              </span>
+            </div>
+            {isFull && !isSignedUp && (
+              <Badge
+                variant="secondary"
+                className="bg-red-100 text-red-700 text-xs"
+              >
+                Full
+              </Badge>
+            )}
           </div>
-          {isFull && !isSignedUp && (
-            <Badge
-              variant="secondary"
-              className="bg-red-100 text-red-700 text-xs"
+          {slot.interviewers.length > 0 && (
+            <p className="pl-[22px] text-xs text-muted-foreground">
+              {slot.interviewers.map((i) => i.name).join(", ")}
+            </p>
+          )}
+          {onManageInterviewers && (
+            <button
+              type="button"
+              className="pl-[22px] text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              onClick={onManageInterviewers}
             >
-              Full
-            </Badge>
+              Manage interviewers
+            </button>
           )}
         </div>
 

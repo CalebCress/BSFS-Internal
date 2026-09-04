@@ -160,6 +160,14 @@ export const list = query({
       slots = slots.filter((s) => s.date === args.date);
     }
 
+    // Interviewer names, resolved once for the whole page rather than per
+    // slot: the profiles table is small and the same people recur across every
+    // slot in a round.
+    const profiles = await ctx.db.query("profiles").collect();
+    const nameByUserId = new Map(
+      profiles.map((p) => [p.userId.toString(), p.displayName])
+    );
+
     // Enrich each slot with signup count and applicant name
     const enriched = await Promise.all(
       slots.map(async (slot) => {
@@ -180,6 +188,10 @@ export const list = query({
           ...slot,
           signupCount: signups.length,
           signupUserIds: signups.map((s) => s.userId.toString()),
+          interviewers: signups.map((s) => ({
+            userId: s.userId,
+            name: nameByUserId.get(s.userId.toString()) ?? "Unknown member",
+          })),
           applicantName,
         };
       })
