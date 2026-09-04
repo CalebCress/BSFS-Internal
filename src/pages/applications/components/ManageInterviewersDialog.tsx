@@ -34,6 +34,7 @@ type Slot = {
   signupUserIds: string[];
   interviewers: { userId: Id<"users">; name: string }[];
   applicantName: string | null;
+  applicantAssigned: boolean;
 };
 
 interface Props {

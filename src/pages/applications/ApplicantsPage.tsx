@@ -20,7 +20,7 @@ export function ApplicantsPage() {
   const [stageFilter, setStageFilter] = useState<Stage | "all">("all");
 
   const applicants = useQuery(api.applicants.list, {});
-  const { hasAdminAccess } = useCurrentProfile();
+  const { hasAdminAccess, isBoardMember } = useCurrentProfile();
 
   // Bulk invites only make sense when looking at a single interview stage -
   // "all stages" would mix rounds and people with nothing to book.
@@ -52,9 +52,11 @@ export function ApplicantsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Applicants</h1>
           <p className="text-muted-foreground">
-            {applicants
-              ? `${applicants.length} total applicant${applicants.length !== 1 ? "s" : ""}`
-              : "Loading..."}
+            {applicants === undefined
+              ? "Loading..."
+              : isBoardMember
+                ? `${applicants.length} total applicant${applicants.length !== 1 ? "s" : ""}`
+                : `${applicants.length} applicant${applicants.length !== 1 ? "s" : ""} you are interviewing`}
           </p>
         </div>
         {hasAdminAccess && invitableStage && (
@@ -70,24 +72,30 @@ export function ApplicantsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <Select
-          value={stageFilter}
-          onValueChange={(v) => setStageFilter(v as Stage | "all")}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by stage" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stages</SelectItem>
-            {(
-              Object.entries(STAGES) as [Stage, (typeof STAGES)[Stage]][]
-            ).map(([key, { label }]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Only the board sees the whole pipeline. Everyone else sees just
+            the applicants they are interviewing, which is one stage by
+            definition, so a stage filter would be a control with nothing to
+            do. */}
+        {isBoardMember && (
+          <Select
+            value={stageFilter}
+            onValueChange={(v) => setStageFilter(v as Stage | "all")}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by stage" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Stages</SelectItem>
+              {(
+                Object.entries(STAGES) as [Stage, (typeof STAGES)[Stage]][]
+              ).map(([key, { label }]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Content */}

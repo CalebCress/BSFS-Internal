@@ -190,11 +190,22 @@ export const list = query({
           .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
           .collect();
 
+        // Who is being interviewed is part of the applicant's record, so it
+        // follows the same rule as the applicant list: the board sees every
+        // name, everyone else sees only the interviews they are on. The card
+        // still says whether a slot is filled, which is what you need to pick
+        // one - it just doesn't name a stranger.
+        const onThisSlot = signups.some((row) => row.userId === userId);
+
         let applicantName: string | null = null;
+        let applicantAssigned = false;
         if (slot.applicantId) {
-          const applicant = await ctx.db.get(slot.applicantId);
-          if (applicant) {
-            applicantName = `${applicant.firstName} ${applicant.lastName}`;
+          applicantAssigned = true;
+          if (board || onThisSlot) {
+            const applicant = await ctx.db.get(slot.applicantId);
+            if (applicant) {
+              applicantName = `${applicant.firstName} ${applicant.lastName}`;
+            }
           }
         }
 
@@ -207,6 +218,7 @@ export const list = query({
             name: nameByUserId.get(s.userId.toString()) ?? "Unknown member",
           })),
           applicantName,
+          applicantAssigned,
         };
       })
     );

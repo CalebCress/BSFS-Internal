@@ -24,6 +24,8 @@ interface SlotData {
   signupUserIds: string[];
   interviewers: { userId: Id<"users">; name: string }[];
   applicantName: string | null;
+  /** True when someone is booked in, even if the viewer may not see who. */
+  applicantAssigned: boolean;
 }
 
 interface ApplicantOption {
@@ -121,6 +123,8 @@ export function SlotCard({
           <User className="h-3.5 w-3.5 text-muted-foreground" />
           {slot.applicantName ? (
             <span>{slot.applicantName}</span>
+          ) : slot.applicantAssigned ? (
+            <span className="text-muted-foreground">Applicant assigned</span>
           ) : (
             <span className="text-muted-foreground">No applicant assigned</span>
           )}

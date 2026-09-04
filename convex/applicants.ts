@@ -14,6 +14,7 @@ import {
   type ReviewLike,
 } from "./reviewStats";
 import { isUserSignedUpForInterview } from "./reviews";
+import { applicantIdsIAmInterviewing } from "./interviewAccess";
 
 export const list = query({
   args: {
@@ -31,7 +32,7 @@ export const list = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
-    const applicants = args.stage
+    const all = args.stage
       ? await ctx.db
           .query("applicants")
           .withIndex("by_stage", (q) => q.eq("stage", args.stage!))
@@ -43,6 +44,16 @@ export const list = query({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     const board = !!profile && isBoardMember(profile);
+
+    // The board runs the pipeline and sees all of it. Everyone else sees only
+    // the applicants they are personally interviewing - the roster as a whole,
+    // including who was rejected and at which stage, is not theirs to read.
+    const applicants = board
+      ? all
+      : await (async () => {
+          const mine = await applicantIdsIAmInterviewing(ctx, userId);
+          return all.filter((a) => mine.has(a._id.toString()));
+        })();
 
     // One scan of the whole reviews table rather than a query per applicant:
     // z-scores need every reviewer's full distribution anyway.
@@ -113,12 +124,21 @@ export const getById = query({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
+    const board = !!profile && isBoardMember(profile);
+
+    // Same rule as the list: someone not interviewing this applicant has no
+    // business on their page, so this reads as "not found" rather than as a
+    // page with the details removed.
+    if (!board) {
+      const mine = await applicantIdsIAmInterviewing(ctx, userId);
+      if (!mine.has(args.id.toString())) return null;
+    }
 
     // The CV and written answers are first-stage review material, so they are
     // board-only - except for someone actually interviewing this applicant at
     // the assessment centre, who needs the context to run the interview.
     const canViewApplication =
-      (!!profile && isBoardMember(profile)) ||
+      board ||
       (await isUserSignedUpForInterview(
         ctx,
         args.id,
@@ -280,7 +300,23 @@ export const getStats = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return {};
 
-    const applicants = await ctx.db.query("applicants").collect();
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    const board = !!profile && isBoardMember(profile);
+
+    const all = await ctx.db.query("applicants").collect();
+
+    // Counts summarise the roster, so they follow the same visibility rule -
+    // otherwise "12 rejected" tells a committee member exactly what the list
+    // above deliberately doesn't.
+    const applicants = board
+      ? all
+      : await (async () => {
+          const mine = await applicantIdsIAmInterviewing(ctx, userId);
+          return all.filter((a) => mine.has(a._id.toString()));
+        })();
 
     const stats: Record<string, number> = {
       applied: 0,

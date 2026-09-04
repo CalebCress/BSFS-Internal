@@ -1,4 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { applicantIdsIAmInterviewing } from "./interviewAccess";
 import { query, mutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
@@ -97,25 +98,12 @@ export async function isUserSignedUpForInterview(
   userId: Id<"users">
 ): Promise<boolean> {
   if (reviewType === "application") return true;
-
-  const slots = await ctx.db
-    .query("interviewSlots")
-    .withIndex("by_applicant", (q) => q.eq("applicantId", applicantId))
-    .collect();
-
-  const matchingSlots = slots.filter((s) => s.type === reviewType);
-
-  for (const slot of matchingSlots) {
-    const signups = await ctx.db
-      .query("interviewSignups")
-      .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
-      .collect();
-    if (signups.some((s) => s.userId === userId)) {
-      return true;
-    }
+  if (reviewType !== "telephone" && reviewType !== "assessment_center") {
+    return false;
   }
 
-  return false;
+  const mine = await applicantIdsIAmInterviewing(ctx, userId, reviewType);
+  return mine.has(applicantId.toString());
 }
 
 /** Reviewer stats need the whole table; it is small and read in one scan. */
