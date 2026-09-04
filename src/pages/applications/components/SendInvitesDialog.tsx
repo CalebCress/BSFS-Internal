@@ -48,7 +48,9 @@ export function SendInvitesDialog({ stage }: { stage: InterviewStage }) {
       const result = await sendInvites({ stage, includeAlreadyInvited });
       toast.success(
         `Queued ${result.sent} invite${result.sent !== 1 ? "s" : ""}` +
-          (result.skipped > 0 ? `, skipped ${result.skipped} already invited` : "")
+          (result.skipped > 0
+            ? `, skipped ${result.skipped} already invited to this stage`
+            : "")
       );
       setOpen(false);
       setIncludeAlreadyInvited(false);
@@ -73,7 +75,9 @@ export function SendInvitesDialog({ stage }: { stage: InterviewStage }) {
         <DialogHeader>
           <DialogTitle>Send {STAGE_LABELS[stage]} invites</DialogTitle>
           <DialogDescription>
-            Each applicant gets a personal link to choose their own time.
+            Each applicant gets a personal link to choose their own time. Being
+            invited to an earlier stage doesn&apos;t count here - everyone is
+            invited afresh for the {STAGE_LABELS[stage].toLowerCase()}.
           </DialogDescription>
         </DialogHeader>
 
@@ -89,11 +93,15 @@ export function SendInvitesDialog({ stage }: { stage: InterviewStage }) {
                 <Badge variant="secondary">{counts.total}</Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Not yet invited</span>
+                <span className="text-muted-foreground">
+                  Not yet invited to this stage
+                </span>
                 <Badge variant="secondary">{counts.notYetInvited}</Badge>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Already invited</span>
+                <span className="text-muted-foreground">
+                  Already invited to this stage
+                </span>
                 <Badge variant="secondary">{counts.alreadyInvited}</Badge>
               </div>
             </div>
@@ -112,6 +120,7 @@ export function SendInvitesDialog({ stage }: { stage: InterviewStage }) {
                   className="cursor-pointer text-sm"
                 >
                   Also re-send to the {counts.alreadyInvited} already invited
+                  to this stage
                   <span className="block text-xs text-muted-foreground">
                     Their existing link keeps working - this just emails it again.
                   </span>

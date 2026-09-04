@@ -24,6 +24,28 @@ const STAGE_LABELS = {
   assessment_center: "assessment centre",
 } as const;
 
+type InterviewStage = keyof typeof STAGE_LABELS;
+
+/**
+ * When this applicant was last emailed a booking link for THIS stage.
+ *
+ * Invites are per stage: someone invited to their telephone interview and then
+ * moved up to the assessment centre has not yet been invited to the assessment
+ * centre, and must not be skipped by a bulk send.
+ *
+ * The deprecated `inviteLastSentAt` had no stage attached. It is read as a
+ * telephone invite, since that is the stage every applicant reaches first.
+ */
+function invitedAt(
+  applicant: Doc<"applicants">,
+  stage: InterviewStage
+): number | undefined {
+  const recorded = applicant.inviteSentAt?.[stage];
+  if (recorded !== undefined) return recorded;
+  if (stage === "telephone") return applicant.inviteLastSentAt;
+  return undefined;
+}
+
 /** Require an approved board member / admin. */
 async function requireAdmin(ctx: MutationCtx) {
   const userId = await getAuthUserId(ctx);
@@ -59,7 +81,7 @@ function escapeHtml(text: string): string {
 }
 
 /** Plain, deliverable HTML - no external CSS or images, which spam filters dislike. */
-function buildInviteEmail(firstName: string, stage: keyof typeof STAGE_LABELS, link: string) {
+function buildInviteEmail(firstName: string, stage: InterviewStage, link: string) {
   const label = STAGE_LABELS[stage];
   const subject = `Book your BSFS ${label}`;
   const safeName = escapeHtml(firstName);
@@ -116,7 +138,7 @@ function buildInviteEmail(firstName: string, stage: keyof typeof STAGE_LABELS, l
 async function enqueueInvite(
   ctx: MutationCtx,
   applicant: Doc<"applicants">,
-  stage: keyof typeof STAGE_LABELS,
+  stage: InterviewStage,
   opts: { dedupe: boolean }
 ) {
   let token = applicant.bookingToken;
@@ -135,10 +157,17 @@ async function enqueueInvite(
     html,
     text,
     replyTo: replyToAddresses(),
-    ...(opts.dedupe ? { idempotencyKey: `invite:${applicant._id}:${token}` } : {}),
+    // The stage belongs in the key: the token is the same for both invites, so
+    // without it the assessment centre email would be dropped as a duplicate of
+    // the telephone one sent weeks earlier.
+    ...(opts.dedupe
+      ? { idempotencyKey: `invite:${applicant._id}:${stage}:${token}` }
+      : {}),
   });
 
-  await ctx.db.patch(applicant._id, { inviteLastSentAt: Date.now() });
+  await ctx.db.patch(applicant._id, {
+    inviteSentAt: { ...applicant.inviteSentAt, [stage]: Date.now() },
+  });
 }
 
 /** Send (or resend) the booking invite to a single applicant. */
@@ -168,8 +197,10 @@ export const sendInvite = mutation({
 /**
  * Send booking invites to everyone in a stage.
  *
- * Skips applicants already invited unless `includeAlreadyInvited` is set, so
- * running it again after adding a few people doesn't re-mail the whole cohort.
+ * Skips applicants already invited TO THIS STAGE unless `includeAlreadyInvited`
+ * is set, so running it again after adding a few people doesn't re-mail the
+ * whole cohort - while someone promoted from the telephone round still gets
+ * their assessment centre invite.
  */
 export const sendInvitesForStage = mutation({
   args: {
@@ -186,7 +217,7 @@ export const sendInvitesForStage = mutation({
 
     const recipients = args.includeAlreadyInvited
       ? applicants
-      : applicants.filter((a) => a.inviteLastSentAt === undefined);
+      : applicants.filter((a) => invitedAt(a, args.stage) === undefined);
 
     for (const applicant of recipients) {
       await enqueueInvite(ctx, applicant, args.stage, { dedupe: true });
@@ -209,7 +240,7 @@ export const getInviteCounts = query({
       .collect();
 
     const alreadyInvited = applicants.filter(
-      (a) => a.inviteLastSentAt !== undefined
+      (a) => invitedAt(a, args.stage) !== undefined
     ).length;
 
     return {

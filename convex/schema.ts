@@ -82,8 +82,20 @@ export default defineSchema({
     // Secret token for the public interview booking link (/interview/:token).
     // Optional because rows created before this feature have none.
     bookingToken: v.optional(v.string()),
-    // When a booking invite was last emailed, so a bulk send can skip anyone
-    // who has already been contacted.
+    // When a booking invite was last emailed, per interview stage, so a bulk
+    // send can skip anyone already contacted FOR THAT STAGE. An applicant is
+    // invited twice over a round - once to the telephone interview and again
+    // to the assessment centre - so this can't be a single timestamp.
+    inviteSentAt: v.optional(
+      v.object({
+        telephone: v.optional(v.number()),
+        assessment_center: v.optional(v.number()),
+      })
+    ),
+    // Deprecated predecessor of inviteSentAt: a single timestamp with no record
+    // of which stage it was for. Kept so documents written before the split
+    // still validate; read as a telephone invite, which is the stage everyone
+    // is invited to first. No longer written.
     inviteLastSentAt: v.optional(v.number()),
   })
     .index("by_stage", ["stage"])
