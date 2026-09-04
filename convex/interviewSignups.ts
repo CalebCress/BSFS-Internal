@@ -2,6 +2,28 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+/** "HH:MM" as minutes past midnight, for comparing time windows. */
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+type TimeWindow = { date: string; startTime: string; endTime: string };
+
+/**
+ * Do two slots occupy the same person at the same moment?
+ *
+ * Touching windows (10:00-10:30 and 10:30-11:00) do NOT overlap - back-to-back
+ * interviews are normal and must stay bookable.
+ */
+function overlaps(a: TimeWindow, b: TimeWindow): boolean {
+  if (a.date !== b.date) return false;
+  return (
+    toMinutes(a.startTime) < toMinutes(b.endTime) &&
+    toMinutes(b.startTime) < toMinutes(a.endTime)
+  );
+}
+
 // Sign up for an interview slot
 export const signup = mutation({
   args: { slotId: v.id("interviewSlots") },
@@ -28,6 +50,25 @@ export const signup = mutation({
     // Check capacity
     if (existingSignups.length >= slot.maxInterviewers) {
       throw new Error("This slot is at capacity");
+    }
+
+    // You can only be in one interview at a time. This is easy to get wrong by
+    // accident: an assessment centre runs several tables in the same half hour,
+    // so two adjacent cards on the schedule can be the very same time window.
+    const mySignups = await ctx.db
+      .query("interviewSignups")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const mine of mySignups) {
+      const other = await ctx.db.get(mine.slotId);
+      if (!other || other._id === slot._id) continue;
+      if (!overlaps(slot, other)) continue;
+      throw new Error(
+        `You are already signed up for ${other.startTime}-${other.endTime} on ` +
+          `${other.date}, which overlaps this slot. Cancel that signup first ` +
+          `if you meant to move.`
+      );
     }
 
     return await ctx.db.insert("interviewSignups", {

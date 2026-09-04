@@ -40,6 +40,8 @@ interface SlotCardProps {
   onDelete?: () => void;
   onReassign?: (applicantId: Id<"applicants"> | undefined) => void;
   applicantsForReassign?: ApplicantOption[];
+  /** Time range of an existing signup this slot clashes with, if any. */
+  conflictWith?: string | null;
   signingUp?: boolean;
   cancelling?: boolean;
 }
@@ -64,6 +66,7 @@ export function SlotCard({
   onDelete,
   onReassign,
   applicantsForReassign,
+  conflictWith,
   signingUp,
   cancelling,
 }: SlotCardProps) {
@@ -146,14 +149,27 @@ export function SlotCard({
             {cancelling ? "Cancelling..." : "Cancel Signup"}
           </Button>
         ) : (
-          <Button
-            size="sm"
-            className="w-full"
-            onClick={onSignup}
-            disabled={isFull || signingUp}
-          >
-            {signingUp ? "Signing up..." : isFull ? "Slot Full" : "Sign Up"}
-          </Button>
+          <div className="space-y-1">
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={onSignup}
+              disabled={isFull || signingUp || !!conflictWith}
+            >
+              {signingUp
+                ? "Signing up..."
+                : isFull
+                  ? "Slot Full"
+                  : conflictWith
+                    ? "Time Conflict"
+                    : "Sign Up"}
+            </Button>
+            {conflictWith && !isFull && (
+              <p className="text-xs text-muted-foreground">
+                Overlaps your {conflictWith} signup.
+              </p>
+            )}
+          </div>
         )}
 
         {/* Board member: reassign applicant */}

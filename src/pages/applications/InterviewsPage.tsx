@@ -13,6 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BatchCreateDialog } from "./components/BatchCreateDialog";
 import { SlotCard } from "./components/SlotCard";
@@ -21,10 +23,17 @@ import { toast } from "sonner";
 
 type SlotType = "telephone" | "assessment_center";
 
+/** "HH:MM" as minutes past midnight, for comparing time windows. */
+const toMinutes = (time: string) => {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+};
+
 export function InterviewsPage() {
   const { profile, hasAdminAccess } = useCurrentProfile();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | SlotType>("all");
+  const [assignedOnly, setAssignedOnly] = useState(false);
 
   // Queries
   const slots = useQuery(api.interviewSlots.list, {});
@@ -45,10 +54,11 @@ export function InterviewsPage() {
   // Slots grouped by date for the Schedule tab
   const slotsByDate = useMemo(() => {
     if (!slots) return {};
-    const filtered =
-      typeFilter === "all"
-        ? slots
-        : slots.filter((s) => s.type === typeFilter);
+    const filtered = slots.filter(
+      (s) =>
+        (typeFilter === "all" || s.type === typeFilter) &&
+        (!assignedOnly || s.applicantId !== undefined)
+    );
     return filtered.reduce(
       (acc, slot) => {
         if (!acc[slot.date]) acc[slot.date] = [];
@@ -57,7 +67,29 @@ export function InterviewsPage() {
       },
       {} as Record<string, typeof slots>
     );
-  }, [slots, typeFilter]);
+  }, [slots, typeFilter, assignedOnly]);
+
+  /**
+   * The time range of an existing signup that clashes with this slot, if any.
+   *
+   * The server refuses an overlapping signup outright; this just says so before
+   * the click, which matters most at an assessment centre where several tables
+   * share one time window and look like ordinary separate cards.
+   */
+  const conflictFor = useCallback(
+    (slot: { _id: string; date: string; startTime: string; endTime: string }) => {
+      if (!mySignups) return null;
+      const clash = mySignups.find(
+        ({ slot: mine }) =>
+          mine._id.toString() !== slot._id.toString() &&
+          mine.date === slot.date &&
+          toMinutes(mine.startTime) < toMinutes(slot.endTime) &&
+          toMinutes(slot.startTime) < toMinutes(mine.endTime)
+      );
+      return clash ? `${clash.slot.startTime}-${clash.slot.endTime}` : null;
+    },
+    [mySignups]
+  );
 
   const sortedDates = useMemo(
     () => Object.keys(slotsByDate).sort(),
@@ -200,6 +232,20 @@ export function InterviewsPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="assigned-only"
+                checked={assignedOnly}
+                onCheckedChange={(checked) => setAssignedOnly(checked === true)}
+              />
+              <Label
+                htmlFor="assigned-only"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Only slots with an applicant
+              </Label>
+            </div>
           </div>
 
           {/* Slot list grouped by date */}
@@ -215,11 +261,17 @@ export function InterviewsPage() {
           ) : sortedDates.length === 0 ? (
             <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
               <Calendar className="mx-auto mb-3 h-8 w-8 opacity-40" />
-              <p className="font-medium">No interview slots</p>
+              <p className="font-medium">
+                {slots.length > 0
+                  ? "No slots match these filters"
+                  : "No interview slots"}
+              </p>
               <p className="text-sm">
-                {hasAdminAccess
-                  ? 'Click "Create Slots" to schedule interviews.'
-                  : "No interview slots have been created yet."}
+                {slots.length > 0
+                  ? "Try clearing the type filter or the applicant checkbox."
+                  : hasAdminAccess
+                    ? 'Click "Create Slots" to schedule interviews.'
+                    : "No interview slots have been created yet."}
               </p>
             </div>
           ) : (
@@ -240,6 +292,7 @@ export function InterviewsPage() {
                         void handleReassign(slot._id, applicantId)
                       }
                       applicantsForReassign={applicantsForReassign(slot.type)}
+                      conflictWith={conflictFor(slot)}
                       signingUp={loadingSlot === slot._id}
                       cancelling={loadingSlot === slot._id}
                     />
