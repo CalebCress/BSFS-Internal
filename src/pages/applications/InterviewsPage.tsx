@@ -248,25 +248,30 @@ export function InterviewsPage() {
 
         {/* Schedule Tab */}
         <TabsContent value="schedule" className="mt-6 space-y-6">
-          {/* Type filter */}
+          {/* Type filter. Hidden for non-board members: telephone interviews
+              are board-run and never reach them, so a filter with one real
+              option would only invite them to look for slots that aren't
+              there. The server filters regardless of what is shown here. */}
           <div className="flex items-center gap-3">
-            <Select
-              value={typeFilter}
-              onValueChange={(v) =>
-                setTypeFilter(v as "all" | SlotType)
-              }
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="telephone">Telephone</SelectItem>
-                <SelectItem value="assessment_center">
-                  Assessment Center
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            {isBoardMember && (
+              <Select
+                value={typeFilter}
+                onValueChange={(v) =>
+                  setTypeFilter(v as "all" | SlotType)
+                }
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="telephone">Telephone</SelectItem>
+                  <SelectItem value="assessment_center">
+                    Assessment Center
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
             <div className="flex items-center gap-2">
               <Checkbox

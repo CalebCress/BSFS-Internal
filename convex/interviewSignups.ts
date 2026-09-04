@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { isBoardMember } from "./permissions";
+import { isBoardOnlyReviewType } from "./reviewCategories";
 import { overlaps, type TimeWindow } from "./interviewTimes";
 
 /**
@@ -41,6 +42,19 @@ export const signup = mutation({
 
     const slot = await ctx.db.get(args.slotId);
     if (!slot) throw new Error("Slot not found");
+
+    // Telephone interviews are run by the board, so they are neither listed to
+    // nor bookable by anyone else. Enforced here and not just hidden in the UI:
+    // the slot id is guessable from a shared link or an old page.
+    if (isBoardOnlyReviewType(slot.type)) {
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .unique();
+      if (!profile || !isBoardMember(profile)) {
+        throw new Error("Only board members conduct telephone interviews");
+      }
+    }
 
     // Check if already signed up
     const existingSignups = await ctx.db
@@ -108,6 +122,12 @@ export const listMySignups = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    const board = !!profile && isBoardMember(profile);
+
     const mySignups = await ctx.db
       .query("interviewSignups")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -117,6 +137,9 @@ export const listMySignups = query({
       mySignups.map(async (signup) => {
         const slot = await ctx.db.get(signup.slotId);
         if (!slot) return null;
+        // Consistent with the schedule: a non-board member is never shown a
+        // telephone slot, including one they somehow hold.
+        if (!board && isBoardOnlyReviewType(slot.type)) return null;
 
         // Get signup count for this slot
         const allSignups = await ctx.db
