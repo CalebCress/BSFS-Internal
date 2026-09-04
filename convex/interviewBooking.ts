@@ -117,13 +117,29 @@ function slotKey(slot: { date: string; startTime: string }): string {
   return `${slot.date}T${slot.startTime}`;
 }
 
-/** Every slot currently held by this applicant, earliest first. */
-async function heldSlots(ctx: QueryCtx, applicantId: Doc<"applicants">["_id"]) {
+/**
+ * Slots this applicant holds FOR ONE STAGE, earliest first.
+ *
+ * The stage filter is essential, not a refinement. An applicant is booked
+ * twice over a round - once for the telephone interview, again for the
+ * assessment centre - and the telephone slot keeps their name on it
+ * afterwards as the record that it happened. Without the filter, that old
+ * booking reads as "you already have an interview booked" on the assessment
+ * centre link, showing them the wrong date and refusing the booking they were
+ * actually invited to make.
+ */
+async function heldSlots(
+  ctx: QueryCtx,
+  applicantId: Doc<"applicants">["_id"],
+  stage: InterviewStage
+) {
   const slots = await ctx.db
     .query("interviewSlots")
     .withIndex("by_applicant", (q) => q.eq("applicantId", applicantId))
     .collect();
-  return slots.sort((a, b) => slotKey(a).localeCompare(slotKey(b)));
+  return slots
+    .filter((slot) => slot.type === stage)
+    .sort((a, b) => slotKey(a).localeCompare(slotKey(b)));
 }
 
 
@@ -270,7 +286,7 @@ export const getByToken = query({
 
     // Staff can assign an applicant to more than one slot via interviewSlots.update,
     // so prefer the next upcoming one and fall back to the earliest.
-    const held = await heldSlots(ctx, applicant._id);
+    const held = await heldSlots(ctx, applicant._id, stage);
     const current =
       held.find((s) => slotStartMs(s.date, s.startTime) > now) ?? held[0] ?? null;
 
@@ -375,7 +391,7 @@ export const book = mutation({
 
     // Releasing the old booking and claiming the new one happen in one
     // transaction, so the applicant is never left holding nothing.
-    const held = await heldSlots(ctx, applicant._id);
+    const held = await heldSlots(ctx, applicant._id, stage);
     if (held.length > 0 && !ALLOW_RESCHEDULE) {
       throw new Error(
         "You already have an interview booked. Please contact us if you need to change it."
@@ -413,7 +429,7 @@ export const cancel = mutation({
       );
     }
 
-    const held = await heldSlots(ctx, resolved.applicant._id);
+    const held = await heldSlots(ctx, resolved.applicant._id, resolved.stage);
     if (held.length === 0) throw new Error("You have no booking to cancel.");
 
     assertChangeable(held, Date.now());
