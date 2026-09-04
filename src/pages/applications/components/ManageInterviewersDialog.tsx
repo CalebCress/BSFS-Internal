@@ -33,6 +33,7 @@ type Slot = {
   signupCount: number;
   signupUserIds: string[];
   interviewers: { userId: Id<"users">; name: string }[];
+  applicantName: string | null;
 };
 
 interface Props {
@@ -133,12 +134,17 @@ export function ManageInterviewersDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Interviewers</DialogTitle>
+          <DialogTitle>
+            {slot.applicantName
+              ? `Interviewers for ${slot.applicantName}`
+              : "Interviewers"}
+          </DialogTitle>
           <DialogDescription>
             {formatDate(slot.date)}, {slot.startTime}&ndash;{slot.endTime}
             {slot.tableNumber !== undefined && ` (Table ${slot.tableNumber})`}
             {" · "}
             {slot.signupCount} of {slot.maxInterviewers} filled
+            {!slot.applicantName && " · no applicant assigned"}
           </DialogDescription>
         </DialogHeader>
 
@@ -171,7 +177,7 @@ export function ManageInterviewersDialog({
                       )
                     }
                   >
-                    <SelectTrigger className="h-8 w-[190px] text-xs">
+                    <SelectTrigger className="h-8 w-[230px] text-xs">
                       <SelectValue
                         placeholder={
                           targets.length === 0 ? "No other slots" : "Move to..."
@@ -185,13 +191,22 @@ export function ManageInterviewersDialog({
                           value={target._id}
                           disabled={disabled}
                         >
-                          {target.date === slot.date
-                            ? target.startTime
-                            : `${target.date} ${target.startTime}`}
-                          {target.tableNumber !== undefined &&
-                            ` · T${target.tableNumber}`}
-                          {` · ${target.signupCount}/${target.maxInterviewers}`}
-                          {reason ? ` (${reason})` : ""}
+                          {/* The applicant leads: you move someone to an
+                              interview WITH A PERSON, and the time is how you
+                              tell two of them apart. */}
+                          <span className="font-medium">
+                            {target.applicantName ?? "No applicant"}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {" · "}
+                            {target.date === slot.date
+                              ? target.startTime
+                              : `${target.date} ${target.startTime}`}
+                            {target.tableNumber !== undefined &&
+                              ` · T${target.tableNumber}`}
+                            {` · ${target.signupCount}/${target.maxInterviewers}`}
+                            {reason ? ` (${reason})` : ""}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
