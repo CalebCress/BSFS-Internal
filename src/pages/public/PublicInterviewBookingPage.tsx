@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
@@ -76,6 +77,8 @@ function MessageCard({
 }
 
 export function PublicInterviewBookingPage() {
+  useDocumentTitle("BSFS Interview");
+
   const { token } = useParams<{ token: string }>();
   const data = useQuery(
     api.interviewBooking.getByToken,

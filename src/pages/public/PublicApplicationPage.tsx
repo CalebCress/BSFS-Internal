@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -55,6 +56,8 @@ const applicationSchema = z.object({
 type ApplicationFormData = z.infer<typeof applicationSchema>;
 
 export function PublicApplicationPage() {
+  useDocumentTitle("BSFS Application");
+
   const activeForm = useQuery(api.applicationForms.getActive);
   const submitApplication = useMutation(api.applications.submit);
   const generateUploadUrl = useMutation(api.applications.generateUploadUrl);
