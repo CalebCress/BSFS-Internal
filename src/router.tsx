@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RootLayout } from "./layouts/RootLayout";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
@@ -35,6 +35,7 @@ import { MemberManagementPage } from "./pages/admin/MemberManagementPage";
 import { AttendancePage } from "./pages/admin/attendance/AttendancePage";
 import { AlumniRegisterPage } from "./pages/AlumniRegisterPage";
 import { AlumniSetupPage } from "./pages/AlumniSetupPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 export const router = createBrowserRouter([
   {
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [{ index: true, element: <PublicApplicationPage /> }],
   },
+  // Short links for posters and Instagram bios. `replace` so the back button
+  // returns to wherever they came from, not to the redirect.
+  { path: "/y", element: <Navigate to="/apply" replace /> },
+  { path: "/ly", element: <Navigate to="/apply" replace /> },
   {
     path: "/interview/:token",
     element: <PublicLayout />,
@@ -88,4 +93,8 @@ export const router = createBrowserRouter([
       { path: "careers/internship-tracker", element: <RequireAccess check="member"><InternshipTrackerPage /></RequireAccess> },
     ],
   },
+  // Anything else. Outside RootLayout so an unknown URL never runs the
+  // authenticated shell - a stranger following a bad link gets the 404, not a
+  // redirect to the login page.
+  { path: "*", element: <NotFoundPage /> },
 ]);
