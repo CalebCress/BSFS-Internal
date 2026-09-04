@@ -15,7 +15,7 @@ export function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-t-2 border-t-bsfs-blue bg-background/80 backdrop-blur">
-        <div className="container flex h-16 items-center px-4">
+        <div className="container flex h-24 items-center px-4">
           {/* Alt text, not a decorative image: it is the only thing naming the
               society in this header. */}
           <img
@@ -23,7 +23,7 @@ export function PublicLayout() {
             alt="BSFS"
             width={480}
             height={478}
-            className="h-12 w-auto"
+            className="h-[4.5rem] w-auto"
           />
         </div>
       </header>
