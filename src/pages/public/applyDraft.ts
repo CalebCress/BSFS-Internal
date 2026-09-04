@@ -18,7 +18,7 @@ export type DraftValues = {
   email: string;
   phone: string;
   aboutYou: string;
-  marketsInsight: string;
+  recentHeadline: string;
 };
 
 export const EMPTY_DRAFT: DraftValues = {
@@ -27,7 +27,7 @@ export const EMPTY_DRAFT: DraftValues = {
   email: "",
   phone: "",
   aboutYou: "",
-  marketsInsight: "",
+  recentHeadline: "",
 };
 
 type StoredDraft = {
@@ -85,7 +85,7 @@ export function loadDraft(): StoredDraft | null {
         email: asString(values.email),
         phone: asString(values.phone),
         aboutYou: asString(values.aboutYou),
-        marketsInsight: asString(values.marketsInsight),
+        recentHeadline: asString(values.recentHeadline),
       },
     };
   } catch {

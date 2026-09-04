@@ -16,7 +16,7 @@ export const submit = mutation({
     email: v.string(),
     phone: v.string(),
     aboutYou: v.string(),
-    marketsInsight: v.string(),
+    recentHeadline: v.string(),
     cvStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
@@ -35,7 +35,7 @@ export const submit = mutation({
     if (!args.phone.trim()) throw new Error("Phone number is required.");
     if (!args.aboutYou.trim())
       throw new Error("Please answer the first question.");
-    if (!args.marketsInsight.trim())
+    if (!args.recentHeadline.trim())
       throw new Error("Please answer the second question.");
 
     // Check for duplicate email within this round
@@ -78,8 +78,11 @@ export const submit = mutation({
       responses: [
         { fieldId: "about_you", value: args.aboutYou.trim() },
         {
-          fieldId: "markets_insight",
-          value: args.marketsInsight.trim(),
+          // A new id, not a reworded markets_insight: this is a different
+          // question, and old answers must keep rendering under the question
+          // their applicant was actually asked.
+          fieldId: "recent_headline",
+          value: args.recentHeadline.trim(),
         },
       ],
       cvStorageId: args.cvStorageId,

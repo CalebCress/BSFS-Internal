@@ -44,7 +44,7 @@ const applicationSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(1, "Phone number is required"),
   aboutYou: z.string().min(50, "Please write at least 50 characters"),
-  marketsInsight: z.string().min(50, "Please write at least 50 characters"),
+  recentHeadline: z.string().min(50, "Please write at least 50 characters"),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -212,7 +212,7 @@ export function PublicApplicationPage() {
         email: data.email,
         phone: data.phone,
         aboutYou: data.aboutYou,
-        marketsInsight: data.marketsInsight,
+        recentHeadline: data.recentHeadline,
         cvStorageId,
       });
 
@@ -417,7 +417,7 @@ export function PublicApplicationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Tell me about yourself and why you would be a good fit for
+                      Tell us about yourself and why you would be a good fit for
                       BSFS.
                     </FormLabel>
                     <FormControl>
@@ -434,13 +434,12 @@ export function PublicApplicationPage() {
               <Separator />
               <FormField
                 control={form.control}
-                name="marketsInsight"
+                name="recentHeadline"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Tell me about an interesting thing you&apos;ve seen in the
-                      markets or in corporate finance (M&amp;A, Capital Markets,
-                      and PE Deals).
+                      Tell us about an interesting headline you read recently
+                      and why you found it interesting.
                     </FormLabel>
                     <FormControl>
                       <Textarea

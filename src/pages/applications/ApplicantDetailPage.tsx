@@ -54,10 +54,12 @@ import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 
 /** Maps fieldId from the responses array to human-readable question labels */
 const QUESTION_LABELS: Record<string, string> = {
-  about_you: "Tell me about yourself and why you would be a good fit for BSFS.",
+  about_you: "Tell us about yourself and why you would be a good fit for BSFS.",
+  recent_headline:
+    "Tell us about an interesting headline you read recently and why you found it interesting.",
+  // Legacy ids, kept so applications from earlier rounds still render a label.
   markets_insight:
     "Tell me about an interesting thing you\u2019ve seen in the markets or in corporate finance (M&A, Capital Markets, and PE Deals).",
-  // Legacy ids, kept so applications from earlier rounds still render a label.
   why_bsfs: "Why BSFS and why you?",
   interesting_learning: "What's something interesting you've learned recently?",
 };
