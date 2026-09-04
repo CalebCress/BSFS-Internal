@@ -37,8 +37,10 @@ import {
 import { Button } from "@/components/ui/button";
 
 const applicationSubItems = [
-  { title: "Overview", path: "/applications" },
-  { title: "Forms", path: "/applications/forms" },
+  // Running the round - the pipeline overview and opening/closing application
+  // forms - is the board's job. Everyone else joins at the interview stage.
+  { title: "Overview", path: "/applications", boardOnly: true },
+  { title: "Forms", path: "/applications/forms", boardOnly: true },
   { title: "Applicants", path: "/applications/applicants" },
   { title: "Interviews", path: "/applications/interviews" },
   { title: "Reviews", path: "/applications/reviews" },
@@ -67,7 +69,14 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuthActions();
-  const { profile, hasAdminAccess, canRecordAttendance, isCvReviewer, isAlumni } = useCurrentProfile();
+  const {
+    profile,
+    hasAdminAccess,
+    isBoardMember,
+    canRecordAttendance,
+    isCvReviewer,
+    isAlumni,
+  } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
 
   const isInApplications = location.pathname.startsWith("/applications");
@@ -131,22 +140,24 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                   {applicationsOpen && (
                     <SidebarMenuSub>
-                      {applicationSubItems.map((item) => {
-                        const isSubActive =
-                          item.path === "/applications"
-                            ? location.pathname === "/applications"
-                            : location.pathname.startsWith(item.path);
-                        return (
-                          <SidebarMenuSubItem key={item.path}>
-                            <SidebarMenuSubButton
-                              isActive={isSubActive}
-                              onClick={() => navigate(item.path)}
-                            >
-                              <span>{item.title}</span>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        );
-                      })}
+                      {applicationSubItems
+                        .filter((item) => !item.boardOnly || isBoardMember)
+                        .map((item) => {
+                          const isSubActive =
+                            item.path === "/applications"
+                              ? location.pathname === "/applications"
+                              : location.pathname.startsWith(item.path);
+                          return (
+                            <SidebarMenuSubItem key={item.path}>
+                              <SidebarMenuSubButton
+                                isActive={isSubActive}
+                                onClick={() => navigate(item.path)}
+                              >
+                                <span>{item.title}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                     </SidebarMenuSub>
                   )}
                 </SidebarMenuItem>

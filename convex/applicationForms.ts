@@ -1,6 +1,32 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, mutation } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { isBoardMember } from "./permissions";
+
+/**
+ * Application rounds are the board's to run - opening one starts accepting
+ * applications from the public, and closing one stops it.
+ *
+ * Note getActive stays open to everyone, authenticated or not: the public
+ * apply page needs it.
+ */
+async function isBoard(ctx: QueryCtx): Promise<boolean> {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return false;
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  return !!profile && isBoardMember(profile) && profile.status === "approved";
+}
+
+async function requireBoard(ctx: QueryCtx) {
+  if (!(await isBoard(ctx))) {
+    throw new Error("Only board members can manage application rounds");
+  }
+}
 
 export const create = mutation({
   args: {
@@ -8,6 +34,7 @@ export const create = mutation({
     semester: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireBoard(ctx);
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
@@ -24,8 +51,7 @@ export const create = mutation({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
+    if (!(await isBoard(ctx))) return [];
 
     const forms = await ctx.db
       .query("applicationForms")
@@ -68,8 +94,7 @@ export const activate = mutation({
     id: v.id("applicationForms"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireBoard(ctx);
 
     // Deactivate all currently active forms
     const activeForms = await ctx.db
@@ -91,8 +116,7 @@ export const deactivate = mutation({
     id: v.id("applicationForms"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    await requireBoard(ctx);
 
     await ctx.db.patch(args.id, { isActive: false });
   },
