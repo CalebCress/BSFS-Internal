@@ -127,7 +127,7 @@ export function ApplicantDetailPage() {
     }
   };
 
-  const { isBoardMember } = useCurrentProfile();
+  const { isBoardMember, hasAdminAccess } = useCurrentProfile();
 
   // Application and telephone reviews are board-only, so a committee member
   // must not be offered them - nor be defaulted onto one, which would leave
@@ -237,10 +237,12 @@ export function ApplicantDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <StageBadge stage={applicant.stage} />
-          <ApplicantStageSelect
-            applicantId={applicant._id}
-            currentStage={applicant.stage}
-          />
+          {isBoardMember && (
+            <ApplicantStageSelect
+              applicantId={applicant._id}
+              currentStage={applicant.stage}
+            />
+          )}
         </div>
       </div>
 
@@ -435,6 +437,10 @@ export function ApplicantDetailPage() {
                 <span className="text-muted-foreground">Round: </span>
                 <span className="font-medium">{applicant.formTitle}</span>
               </div>
+              {/* Staff-only: the link lets its holder book on the
+                  applicant's behalf. */}
+              {hasAdminAccess && (
+              <>
               <Separator />
               <div className="space-y-2">
                 <p className="text-sm font-medium">Interview booking link</p>
@@ -465,6 +471,8 @@ export function ApplicantDetailPage() {
                   </p>
                 )}
               </div>
+              </>
+              )}
             </CardContent>
           </Card>
 

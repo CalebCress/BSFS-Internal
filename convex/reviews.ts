@@ -67,6 +67,30 @@ function validateScores(
 }
 
 /**
+ * May this user see this applicant at all?
+ *
+ * The review type gate below answers "which rounds may you read", which is a
+ * different question from "whose reviews may you read". Without this, an
+ * applicant id is enough to read the assessment centre reviews - scores,
+ * comments and reviewer names - of someone you are not interviewing, which is
+ * exactly what applicants.list and getById refuse to hand over.
+ */
+async function canSeeApplicant(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  applicantId: Id<"applicants">
+): Promise<boolean> {
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  if (!!profile && isBoardMember(profile)) return true;
+
+  const mine = await applicantIdsIAmInterviewing(ctx, userId);
+  return mine.has(applicantId.toString());
+}
+
+/**
  * Application and telephone reviews are board-only, for both reading and
  * writing. Assessment centre reviews stay open to committee members.
  */
@@ -208,6 +232,8 @@ export const listByApplicant = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
+    if (!(await canSeeApplicant(ctx, userId, args.applicantId))) return [];
+
     if (
       args.reviewType &&
       !(await canAccessReviewType(ctx, userId, args.reviewType))
@@ -283,6 +309,8 @@ export const getAggregateScores = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
 
+    if (!(await canSeeApplicant(ctx, userId, args.applicantId))) return null;
+
     if (
       args.reviewType &&
       !(await canAccessReviewType(ctx, userId, args.reviewType))
@@ -295,13 +323,14 @@ export const getAggregateScores = query({
       .withIndex("by_applicant", (q) => q.eq("applicantId", args.applicantId))
       .collect();
 
-    if (args.reviewType) {
-      reviews = reviews.filter((r) => r.reviewType === args.reviewType);
-    }
-
     // Categories are per review type, so an aggregate only makes sense for one
     // type at a time; default to application when unfiltered.
     const type: ReviewType = args.reviewType ?? "application";
+
+    // Always narrow to the type being summarised. Leaving every type in when
+    // unfiltered made `count` a tally of reviews from rounds the caller may not
+    // be able to read, and one that didn't match the categories beside it.
+    reviews = reviews.filter((r) => r.reviewType === type);
 
     const avg = (key: ScoreKey) => {
       const defined = reviews

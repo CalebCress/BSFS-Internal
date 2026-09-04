@@ -49,17 +49,20 @@ export const submit = mutation({
       }
     }
 
-    // Check for duplicate email within this round
-    const existingApplicant = await ctx.db
+    // Check for duplicate email within this round.
+    //
+    // Every applicant with this address, not just the first: someone who
+    // applied in an earlier round has more than one record, and taking only
+    // .first() would compare the wrong one and wave the duplicate through.
+    const sameEmail = await ctx.db
       .query("applicants")
       .withIndex("by_email", (q) =>
         q.eq("email", args.email.trim().toLowerCase())
       )
-      .first();
+      .collect();
 
     if (
-      existingApplicant &&
-      existingApplicant.applicationFormId === args.applicationFormId
+      sameEmail.some((a) => a.applicationFormId === args.applicationFormId)
     ) {
       throw new Error(
         "An application with this email has already been submitted for this round."

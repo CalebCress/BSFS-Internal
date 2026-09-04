@@ -234,6 +234,15 @@ export const getInviteCounts = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return { total: 0, notYetInvited: 0, alreadyInvited: 0 };
 
+    // Only the people who can send invites can count them.
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile || !hasAdminAccess(profile)) {
+      return { total: 0, notYetInvited: 0, alreadyInvited: 0 };
+    }
+
     const applicants = await ctx.db
       .query("applicants")
       .withIndex("by_stage", (q) => q.eq("stage", args.stage))

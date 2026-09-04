@@ -213,6 +213,21 @@ export const moveInterviewer = mutation({
     const target = await ctx.db.get(args.toSlotId);
     if (!target) throw new Error("That slot no longer exists");
 
+    // Don't move someone into a round they can't see. A committee member put
+    // on a telephone slot would have a commitment that never appears in their
+    // schedule or their signups, and that they cannot cancel.
+    if (isBoardOnlyReviewType(target.type)) {
+      const movedProfile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+        .unique();
+      if (!movedProfile || !isBoardMember(movedProfile)) {
+        throw new Error(
+          "Only board members can be assigned to telephone interviews"
+        );
+      }
+    }
+
     const signup = (
       await ctx.db
         .query("interviewSignups")

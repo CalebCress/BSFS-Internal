@@ -198,6 +198,16 @@ export const updateStage = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    // Moving someone through the pipeline - including rejecting them - is the
+    // board's decision. This was previously open to any signed-in member.
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile || !isBoardMember(profile) || profile.status !== "approved") {
+      throw new Error("Only board members can change an applicant's stage");
+    }
+
     await ctx.db.patch(args.id, { stage: args.stage });
 
     // Moving someone into an interview round must leave them linkable, so mint
@@ -221,11 +231,15 @@ export const ensureBookingToken = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    // The token is a bearer capability: whoever holds it can book, and now
+    // rebook, on the applicant's behalf. Being an approved member was too low
+    // a bar - it is handed out by staff sending invites, so it takes the same
+    // access as sending one.
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    if (!profile || profile.status !== "approved") {
+    if (!profile || !hasAdminAccess(profile) || profile.status !== "approved") {
       throw new Error("Not authorised");
     }
 

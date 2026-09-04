@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StageBadge } from "./StageBadge";
+import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { ZScoreBadge } from "./ScoreDisplay";
 import { ApplicantStageSelect } from "./ApplicantStageSelect";
 import { ArrowUpDown, Star } from "lucide-react";
@@ -42,6 +43,9 @@ interface ApplicantTableViewProps {
 }
 
 export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
+  // Only the board moves applicants through the pipeline; the server
+  // refuses anyone else, so the control is hidden rather than left to fail.
+  const { isBoardMember } = useCurrentProfile();
   const navigate = useNavigate();
   const [sortField, setSortField] = useState<SortField>("appliedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -178,10 +182,12 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
                   <ZScoreBadge z={applicant.averageZScore} />
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <ApplicantStageSelect
-                    applicantId={applicant._id}
-                    currentStage={applicant.stage}
-                  />
+                  {isBoardMember && (
+                    <ApplicantStageSelect
+                      applicantId={applicant._id}
+                      currentStage={applicant.stage}
+                    />
+                  )}
                 </TableCell>
               </TableRow>
             ))
