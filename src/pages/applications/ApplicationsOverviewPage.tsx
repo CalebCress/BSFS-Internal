@@ -132,12 +132,6 @@ export function ApplicationsOverviewPage() {
                   </div>
                 );
               })}
-
-              <p className="border-t pt-4 text-xs text-muted-foreground">
-                Each applicant is counted once, at the stage they are in now -
-                so someone at the assessment centre no longer appears under
-                Telephone Interview, even though they passed through it.
-              </p>
             </CardContent>
           </Card>
         </>
