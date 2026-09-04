@@ -23,7 +23,7 @@ export function PublicLayout() {
             alt="BSFS"
             width={480}
             height={478}
-            className="h-10 w-auto"
+            className="h-12 w-auto"
           />
         </div>
       </header>
