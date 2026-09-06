@@ -308,6 +308,75 @@ export const backfillBookingTokens = mutation({
   },
 });
 
+/**
+ * Delete an applicant and everything that belongs to them.
+ *
+ * A bare delete of the applicant row leaves debris that quietly breaks other
+ * things: their reviews keep counting toward every reviewer's mean and standard
+ * deviation, so z-scores are computed against people who no longer exist; their
+ * CV stays in file storage forever; and any interview slot they hold keeps
+ * their id, rendering as "Applicant assigned" with no name and blocking a time
+ * nobody can book.
+ *
+ * So this cascades. The interview SLOT is freed rather than deleted - the slot
+ * is the society's, not the applicant's.
+ */
+export const remove = mutation({
+  args: { id: v.id("applicants") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile || !isBoardMember(profile) || profile.status !== "approved") {
+      throw new Error("Only board members can delete applicants");
+    }
+
+    const applicant = await ctx.db.get(args.id);
+    if (!applicant) throw new Error("Applicant not found");
+
+    const applications = await ctx.db
+      .query("applications")
+      .withIndex("by_applicant", (q) => q.eq("applicantId", args.id))
+      .collect();
+    for (const application of applications) {
+      // The CV goes too - a deleted applicant whose CV lingers in storage is
+      // not deleted in any sense that matters.
+      if (application.cvStorageId) {
+        await ctx.storage.delete(application.cvStorageId);
+      }
+      await ctx.db.delete(application._id);
+    }
+
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_applicant", (q) => q.eq("applicantId", args.id))
+      .collect();
+    for (const review of reviews) {
+      await ctx.db.delete(review._id);
+    }
+
+    const slots = await ctx.db
+      .query("interviewSlots")
+      .withIndex("by_applicant", (q) => q.eq("applicantId", args.id))
+      .collect();
+    for (const slot of slots) {
+      await ctx.db.patch(slot._id, { applicantId: undefined });
+    }
+
+    await ctx.db.delete(args.id);
+
+    return {
+      applications: applications.length,
+      reviews: reviews.length,
+      slotsFreed: slots.length,
+    };
+  },
+});
+
 export const getStats = query({
   args: {},
   handler: async (ctx) => {

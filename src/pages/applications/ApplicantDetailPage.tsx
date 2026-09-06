@@ -28,7 +28,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StageBadge } from "./components/StageBadge";
-import { ApplicantStageSelect } from "./components/ApplicantStageSelect";
+import { ApplicantActionsMenu } from "./components/ApplicantActionsMenu";
 import { ScoreDisplay, ZScoreBadge } from "./components/ScoreDisplay";
 import { ReviewForm } from "./components/ReviewForm";
 import {
@@ -239,9 +239,11 @@ export function ApplicantDetailPage() {
         <div className="flex items-center gap-2">
           <StageBadge stage={applicant.stage} />
           {isBoardMember && (
-            <ApplicantStageSelect
+            <ApplicantActionsMenu
               applicantId={applicant._id}
               currentStage={applicant.stage}
+              applicantName={`${applicant.firstName} ${applicant.lastName}`}
+              navigateAwayOnDelete
             />
           )}
         </div>

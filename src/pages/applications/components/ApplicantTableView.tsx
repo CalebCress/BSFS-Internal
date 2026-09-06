@@ -12,7 +12,7 @@ import {
 import { StageBadge } from "./StageBadge";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { ZScoreBadge } from "./ScoreDisplay";
-import { ApplicantStageSelect } from "./ApplicantStageSelect";
+import { ApplicantActionsMenu } from "./ApplicantActionsMenu";
 import { ArrowUpDown, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Stage } from "@/lib/constants";
@@ -202,9 +202,10 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   {isBoardMember && (
-                    <ApplicantStageSelect
+                    <ApplicantActionsMenu
                       applicantId={applicant._id}
                       currentStage={applicant.stage}
+                      applicantName={`${applicant.firstName} ${applicant.lastName}`}
                     />
                   )}
                 </TableCell>
