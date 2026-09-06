@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { type Id } from "../../../../convex/_generated/dataModel";
@@ -30,6 +30,17 @@ interface ReviewFormProps {
   onSuccess: () => void;
 }
 
+/** Half the slider thumb, in px - the track's usable span is inset by this. */
+const THUMB_INSET = 8;
+
+/**
+ * Pick a score from 1 to 5 in half points.
+ *
+ * The whole block is one click surface: the track, the ticks, the numbers and
+ * every pixel between them map to the nearest step. There is no dead space to
+ * hit by accident, and no separate targets that can disagree with the track
+ * about where a score sits.
+ */
 function ScoreInput({
   value,
   onChange,
@@ -37,66 +48,105 @@ function ScoreInput({
   value: number | undefined;
   onChange: (v: number | undefined) => void;
 }) {
-  // An untouched score has no value, which a slider can't represent - it always
-  // has a thumb somewhere. So the track sits at the midpoint but reads as
-  // "Not scored" until it is touched, and submitting still refuses an
-  // untouched factor rather than quietly recording that midpoint.
   const scored = value !== undefined;
-  const position = value ?? (SCORE_MIN + SCORE_MAX) / 2;
+  const trackRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Where a score sits on the track, as a CSS length.
-   *
-   * Inset by half a thumb at each end: the thumb's CENTRE travels from 8px to
-   * (width - 8px), not 0% to 100%, so plain percentages would leave the 1 and 5
-   * ticks visibly off from the thumb parked on them.
-   */
+  /** Where a score sits along the track, as a CSS length. */
   const offsetOf = (score: number) => {
     const fraction = (score - SCORE_MIN) / (SCORE_MAX - SCORE_MIN);
-    return `calc(0.5rem + (100% - 1rem) * ${fraction})`;
+    return `calc(${THUMB_INSET}px + (100% - ${THUMB_INSET * 2}px) * ${fraction})`;
+  };
+
+  /**
+   * Nearest valid score to a horizontal position.
+   *
+   * Measured against the TRACK, whatever was actually clicked, so a click on a
+   * number lands on the same score as a click on the track above it.
+   */
+  const scoreAt = (clientX: number): number | null => {
+    const el = trackRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const span = rect.width - THUMB_INSET * 2;
+    if (span <= 0) return null;
+
+    const fraction = (clientX - rect.left - THUMB_INSET) / span;
+    const raw = SCORE_MIN + fraction * (SCORE_MAX - SCORE_MIN);
+    const snapped = Math.round(raw / SCORE_STEP) * SCORE_STEP;
+    return Math.min(SCORE_MAX, Math.max(SCORE_MIN, snapped));
   };
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-3">
-        <Slider
-          min={SCORE_MIN}
-          max={SCORE_MAX}
-          step={SCORE_STEP}
-          value={[position]}
-          onValueChange={([next]) => onChange(next)}
-          aria-label="Score"
-          className={cn("flex-1", !scored && "opacity-60")}
-        />
-        <span
-          className={cn(
-            "w-12 shrink-0 text-right text-sm tabular-nums",
-            scored ? "font-semibold" : "text-muted-foreground"
-          )}
-        >
-          {scored ? value.toFixed(1) : "\u2014"}
-        </span>
+    <div
+      className="cursor-pointer"
+      onClick={(e) => {
+        const next = scoreAt(e.clientX);
+        if (next !== null) onChange(next);
+      }}
+    >
+      <div ref={trackRef}>
+        {scored ? (
+          <Slider
+            min={SCORE_MIN}
+            max={SCORE_MAX}
+            step={SCORE_STEP}
+            value={[value]}
+            onValueChange={([next]) => onChange(next)}
+            aria-label="Score"
+          />
+        ) : (
+          // No score yet, so no thumb: a circle parked on some midpoint reads
+          // as an answer nobody gave. A plain track rather than a slider with
+          // an invisible thumb - an interactive control you can't see is worse
+          // than none. The first click brings the real slider in.
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Score, not set"
+            onKeyDown={(e) => {
+              // Start in the middle from the keyboard; the real slider's arrow
+              // keys take over from there.
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onChange((SCORE_MIN + SCORE_MAX) / 2);
+              }
+            }}
+            className="flex h-4 items-center rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <div className="h-1.5 w-full rounded-full bg-secondary" />
+          </div>
+        )}
       </div>
 
-      {/* Ticks: whole numbers get a taller mark and a label, half points a
-          short one. The scale is legible without reading any numbers. */}
-      <div className="relative mr-[3.75rem] h-6">
+      {/* Ticks are decoration, not targets - the surrounding block handles
+          every click, so there is nothing here to miss between them. Whole
+          numbers get a taller mark and a label, half points a short one, so
+          the scale is legible without reading any numbers. */}
+      <div className="pointer-events-none relative h-8 pt-1">
         {SCORE_OPTIONS.map((score) => {
           const isWhole = Number.isInteger(score);
           return (
             <div
               key={score}
-              className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
+              className="absolute top-1 flex -translate-x-1/2 flex-col items-center"
               style={{ left: offsetOf(score) }}
             >
               <span
                 className={cn(
-                  "w-px bg-border",
-                  isWhole ? "h-2" : "h-1"
+                  "w-px transition-colors",
+                  isWhole ? "h-2" : "h-1",
+                  value === score ? "bg-primary" : "bg-border"
                 )}
               />
               {isWhole && (
-                <span className="mt-0.5 text-xs text-muted-foreground">
+                <span
+                  className={cn(
+                    "mt-0.5 text-xs transition-colors",
+                    value === score
+                      ? "font-medium text-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
                   {score}
                 </span>
               )}
@@ -104,16 +154,6 @@ function ScoreInput({
           );
         })}
       </div>
-
-      {scored && (
-        <button
-          type="button"
-          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          onClick={() => onChange(undefined)}
-        >
-          Clear
-        </button>
-      )}
     </div>
   );
 }
@@ -178,10 +218,25 @@ export function ReviewForm({
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
       {categories.map((category) => (
         <div key={category.key} className="space-y-2">
-          <Label className="flex items-center gap-1.5">
-            {category.label}
-            <span className="text-xs text-destructive">*</span>
-          </Label>
+          <div className="flex items-baseline justify-between">
+            <Label className="flex items-center gap-1.5">
+              {category.label}
+              <span className="text-xs text-destructive">*</span>
+            </Label>
+            {/* Beside the label, not beside the track: a readout in the row
+                would reserve width the slider and ticks can't use, leaving a
+                strip on the right where clicks do nothing. */}
+            <span
+              className={cn(
+                "text-sm tabular-nums",
+                scores[category.key] !== undefined
+                  ? "font-semibold"
+                  : "text-muted-foreground"
+              )}
+            >
+              {scores[category.key]?.toFixed(1) ?? "\u2014"}
+            </span>
+          </div>
           <ScoreInput
             value={scores[category.key]}
             onChange={(v) => updateScore(category.key, v)}
