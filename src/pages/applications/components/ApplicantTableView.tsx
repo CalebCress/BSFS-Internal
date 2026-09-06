@@ -27,6 +27,7 @@ type Applicant = {
   appliedAt: number;
   averageScore: number | null;
   averageZScore: number | null;
+  reviewCount: number;
 };
 
 type SortField =
@@ -35,7 +36,8 @@ type SortField =
   | "stage"
   | "appliedAt"
   | "averageScore"
-  | "averageZScore";
+  | "averageZScore"
+  | "reviewCount";
 type SortDir = "asc" | "desc";
 
 interface ApplicantTableViewProps {
@@ -88,6 +90,11 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
         if (b.averageZScore == null) return -1;
         return dir * (a.averageZScore - b.averageZScore);
       }
+      // Zero is a real count, not a missing value, so it sorts normally -
+      // ascending puts the applicants nobody has reviewed at the top, which is
+      // the reason to sort by this column at all.
+      case "reviewCount":
+        return dir * (a.reviewCount - b.reviewCount);
       default:
         return 0;
     }
@@ -129,6 +136,9 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
               <SortButton field="appliedAt">Applied Date</SortButton>
             </TableHead>
             <TableHead>
+              <SortButton field="reviewCount">Reviews</SortButton>
+            </TableHead>
+            <TableHead>
               <SortButton field="averageScore">Avg. Score</SortButton>
             </TableHead>
             <TableHead>
@@ -141,7 +151,7 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
           {sorted.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={8}
                 className="h-24 text-center text-muted-foreground"
               >
                 No applicants found.
@@ -165,6 +175,15 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
                 </TableCell>
                 <TableCell>
                   {formatDate(applicant.appliedAt)}
+                </TableCell>
+                <TableCell>
+                  {applicant.reviewCount > 0 ? (
+                    <span className="text-sm tabular-nums">
+                      {applicant.reviewCount}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">None</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {applicant.averageScore != null ? (
