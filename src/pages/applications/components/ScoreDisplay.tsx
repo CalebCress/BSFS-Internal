@@ -30,7 +30,6 @@ export function ScoreDisplay({
     );
   }
 
-  const rounded = Math.round(score);
   const starSize = size === "sm" ? "h-3 w-3" : "h-4 w-4";
 
   return (
@@ -46,17 +45,32 @@ export function ScoreDisplay({
         </span>
       )}
       <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Star
-            key={i}
-            className={cn(
-              starSize,
-              i <= rounded
-                ? "fill-amber-400 text-amber-400"
-                : "fill-muted text-muted-foreground/30"
-            )}
-          />
-        ))}
+        {[1, 2, 3, 4, 5].map((i) => {
+          // How much of THIS star the score fills, 0 to 1. Rounding to whole
+          // stars would show a 3.5 as either 3 or 4, which is the distinction
+          // the reviewer went to the trouble of making.
+          const fill = Math.max(0, Math.min(1, score - (i - 1)));
+          return (
+            <span key={i} className={cn("relative inline-block", starSize)}>
+              <Star
+                className={cn(
+                  starSize,
+                  "absolute inset-0 fill-muted text-muted-foreground/30"
+                )}
+              />
+              {fill > 0 && (
+                <span
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ width: `${fill * 100}%` }}
+                >
+                  <Star
+                    className={cn(starSize, "fill-amber-400 text-amber-400")}
+                  />
+                </span>
+              )}
+            </span>
+          );
+        })}
       </div>
       <span
         className={cn(

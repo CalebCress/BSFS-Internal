@@ -10,6 +10,7 @@ import {
   SCORE_MAX,
   SCORE_MIN,
   isBoardOnlyReviewType,
+  isValidScore,
   type ReviewType,
   type ScoreKey,
 } from "./reviewCategories";
@@ -58,9 +59,9 @@ function validateScores(
     if (value === undefined) {
       throw new Error(`${label} score is required`);
     }
-    if (!Number.isInteger(value) || value < SCORE_MIN || value > SCORE_MAX) {
+    if (!isValidScore(value)) {
       throw new Error(
-        `${label} score must be a whole number between ${SCORE_MIN} and ${SCORE_MAX}`
+        `${label} score must be between ${SCORE_MIN} and ${SCORE_MAX}, in half points`
       );
     }
   }

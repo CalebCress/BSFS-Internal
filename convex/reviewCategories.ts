@@ -10,6 +10,31 @@
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 5;
 
+/** Scores go in half points: 1, 1.5, 2 ... 5. */
+export const SCORE_STEP = 0.5;
+
+/** Every selectable score, in order - the review form renders straight from this. */
+export const SCORE_OPTIONS: readonly number[] = Array.from(
+  { length: (SCORE_MAX - SCORE_MIN) / SCORE_STEP + 1 },
+  (_, i) => SCORE_MIN + i * SCORE_STEP
+);
+
+/**
+ * Is this a score the scale actually allows?
+ *
+ * Checked with `value * 2` rather than a modulo on 0.5: floating point makes
+ * `3.5 % 0.5` unreliable, while doubling a half-step always lands on a whole
+ * number exactly.
+ */
+export function isValidScore(value: number): boolean {
+  return (
+    Number.isFinite(value) &&
+    value >= SCORE_MIN &&
+    value <= SCORE_MAX &&
+    Number.isInteger(value * 2)
+  );
+}
+
 /** Every score key that can appear on a review, across all types. */
 export type ScoreKey = "cv" | "responses" | "technical" | "behavioral";
 

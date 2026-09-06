@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { REVIEW_CATEGORIES, type ScoreKey } from "@/lib/constants";
+import { SCORE_OPTIONS } from "../../../../convex/reviewCategories";
 import type { ReviewType } from "../../../../convex/reviewCategories";
 
 interface ExistingReview {
@@ -31,22 +32,34 @@ function ScoreInput({
   onChange: (v: number | undefined) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(value === n ? undefined : n)}
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-md border text-sm font-medium transition-colors",
-            value === n
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-input bg-background hover:bg-accent hover:text-accent-foreground"
-          )}
-        >
-          {n}
-        </button>
-      ))}
+    // Nine options now, so they wrap rather than overflow a narrow card. Half
+    // points are drawn lighter and smaller than whole ones: the row still reads
+    // as a 1-5 scale at a glance, with the halves as steps between.
+    <div className="flex flex-wrap items-center gap-1">
+      {SCORE_OPTIONS.map((n) => {
+        const isWhole = Number.isInteger(n);
+        const selected = value === n;
+        return (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onChange(selected ? undefined : n)}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
+              isWhole ? "text-sm font-medium" : "text-xs",
+              selected
+                ? "border-primary bg-primary text-primary-foreground"
+                : cn(
+                    "border-input bg-background hover:bg-accent hover:text-accent-foreground",
+                    !isWhole && "text-muted-foreground"
+                  )
+            )}
+          >
+            {isWhole ? n : n.toFixed(1)}
+          </button>
+        );
+      })}
     </div>
   );
 }
