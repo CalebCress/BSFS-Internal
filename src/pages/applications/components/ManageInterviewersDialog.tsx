@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserMinus } from "lucide-react";
+import { PARALLEL_SLOT_LABELS } from "@/lib/constants";
 
 type Slot = {
   _id: Id<"interviewSlots">;
@@ -142,7 +143,7 @@ export function ManageInterviewersDialog({
           </DialogTitle>
           <DialogDescription>
             {formatDate(slot.date)}, {slot.startTime}&ndash;{slot.endTime}
-            {slot.tableNumber !== undefined && ` (Table ${slot.tableNumber})`}
+            {slot.tableNumber !== undefined && ` (${PARALLEL_SLOT_LABELS[slot.type].one} ${slot.tableNumber})`}
             {" · "}
             {slot.signupCount} of {slot.maxInterviewers} filled
             {!slot.applicantName && " · no applicant assigned"}
@@ -204,7 +205,7 @@ export function ManageInterviewersDialog({
                               ? target.startTime
                               : `${target.date} ${target.startTime}`}
                             {target.tableNumber !== undefined &&
-                              ` · T${target.tableNumber}`}
+                              ` · ${PARALLEL_SLOT_LABELS[target.type].one[0]}${target.tableNumber}`}
                             {` · ${target.signupCount}/${target.maxInterviewers}`}
                             {reason ? ` (${reason})` : ""}
                           </span>

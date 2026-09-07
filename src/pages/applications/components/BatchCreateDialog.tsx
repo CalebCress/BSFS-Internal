@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { PARALLEL_SLOT_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 import { Calendar, Clock } from "lucide-react";
 
@@ -33,6 +34,15 @@ function toMinutes(time: string): number {
   return h * 60 + m;
 }
 
+/** Selectable slot lengths, in minutes. Mirrored by the server's validation. */
+const DURATION_OPTIONS = [15, 20, 30, 45, 60] as const;
+
+/** The usual length of each round, offered before anyone touches the field. */
+const DEFAULT_DURATION = {
+  telephone: 20,
+  assessment_center: 30,
+} as const;
+
 export function BatchCreateDialog({
   open,
   onOpenChange,
@@ -43,12 +53,16 @@ export function BatchCreateDialog({
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
-  const [duration, setDuration] = useState(30);
   const [type, setType] = useState<"telephone" | "assessment_center">(
     "telephone"
   );
+  // Explicit <number>: the const map would otherwise pin the state to the
+  // literal 20 and reject every other option.
+  const [duration, setDuration] = useState<number>(DEFAULT_DURATION.telephone);
   const [maxInterviewers, setMaxInterviewers] = useState(2);
-  const [tables, setTables] = useState(1);
+  // Parallel interviews per time window: tables at an assessment centre,
+  // concurrent calls in a telephone round.
+  const [parallelCount, setParallelCount] = useState(1);
   const [autoAssign, setAutoAssign] = useState(false);
 
   const slotCount = useMemo(() => {
@@ -56,19 +70,19 @@ export function BatchCreateDialog({
     const startMin = toMinutes(startTime);
     const endMin = toMinutes(endTime);
     if (endMin <= startMin) return 0;
-    // One row per table, so an assessment centre with N tables creates N slots
+    // One row per parallel interview, so N of them creates N slots per window
     // per time window.
-    return Math.floor((endMin - startMin) / duration) * Math.max(tables, 1);
-  }, [startTime, endTime, duration, tables]);
+    return Math.floor((endMin - startMin) / duration) * Math.max(parallelCount, 1);
+  }, [startTime, endTime, duration, parallelCount]);
 
   const resetForm = () => {
     setDate("");
     setStartTime("09:00");
     setEndTime("17:00");
-    setDuration(30);
     setType("telephone");
+    setDuration(DEFAULT_DURATION.telephone);
     setMaxInterviewers(2);
-    setTables(1);
+    setParallelCount(1);
     setAutoAssign(false);
   };
 
@@ -93,7 +107,7 @@ export function BatchCreateDialog({
         duration,
         type,
         maxInterviewers,
-        tables: type === "assessment_center" ? tables : 1,
+        parallelCount,
         autoAssign,
       });
       const msg = `Created ${result.slotsCreated} slot${result.slotsCreated !== 1 ? "s" : ""}${
@@ -151,7 +165,12 @@ export function BatchCreateDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>End Time</Label>
+              {/* Same icon as Start Time, and not for decoration: without it
+                  this label is shorter, and the two inputs beneath end up at
+                  different heights. */}
+              <Label className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> End Time
+              </Label>
               <Input
                 type="time"
                 value={endTime}
@@ -173,10 +192,11 @@ export function BatchCreateDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="15">15 min</SelectItem>
-                  <SelectItem value="30">30 min</SelectItem>
-                  <SelectItem value="45">45 min</SelectItem>
-                  <SelectItem value="60">60 min</SelectItem>
+                  {DURATION_OPTIONS.map((minutes) => (
+                    <SelectItem key={minutes} value={String(minutes)}>
+                      {minutes} min
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -184,9 +204,14 @@ export function BatchCreateDialog({
               <Label>Interview Type</Label>
               <Select
                 value={type}
-                onValueChange={(v) =>
-                  setType(v as "telephone" | "assessment_center")
-                }
+                onValueChange={(v) => {
+                  const next = v as "telephone" | "assessment_center";
+                  setType(next);
+                  // Each round has its own usual length, so switching type
+                  // moves the duration with it rather than leaving a
+                  // telephone-sized slot on an assessment centre.
+                  setDuration(DEFAULT_DURATION[next]);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -213,22 +238,21 @@ export function BatchCreateDialog({
             />
           </div>
 
-          {/* Tables (assessment centres run several in parallel) */}
-          {type === "assessment_center" && (
-            <div className="space-y-2">
-              <Label>Tables per Time Slot</Label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={tables}
-                onChange={(e) => setTables(Number(e.target.value))}
-              />
-              <p className="text-xs text-muted-foreground">
-                How many tables run at the same time. Each seats one applicant.
-              </p>
-            </div>
-          )}
+          {/* Both rounds can run several at once - the wording is all that
+              differs, since a phone call is not a table. */}
+          <div className="space-y-2">
+            <Label>{PARALLEL_SLOT_LABELS[type].field}</Label>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={parallelCount}
+              onChange={(e) => setParallelCount(Number(e.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">
+              {PARALLEL_SLOT_LABELS[type].help}
+            </p>
+          </div>
 
           {/* Auto-assign toggle */}
           <div className="space-y-1">

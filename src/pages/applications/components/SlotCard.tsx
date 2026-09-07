@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Clock, User, Users, Trash2 } from "lucide-react";
+import { PARALLEL_SLOT_LABELS } from "@/lib/constants";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 interface SlotData {
@@ -97,7 +98,7 @@ export function SlotCard({
             </span>
             {slot.tableNumber !== undefined && (
               <Badge variant="outline" className="font-normal">
-                Table {slot.tableNumber}
+                {PARALLEL_SLOT_LABELS[slot.type].one} {slot.tableNumber}
               </Badge>
             )}
           </div>

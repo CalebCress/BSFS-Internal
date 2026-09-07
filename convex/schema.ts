@@ -134,9 +134,10 @@ export default defineSchema({
     ),
     maxInterviewers: v.number(),
     applicantId: v.optional(v.id("applicants")),
-    // Assessment centres run several tables in parallel at the same time. Each
-    // table is its own row sharing date/startTime/endTime, so one applicant per
-    // row still holds. Absent (or 1) for telephone interviews.
+    // Which of the parallel interviews at this time window this row is - a
+    // table at an assessment centre, a concurrent call in a telephone round.
+    // Each is its own row sharing date/startTime/endTime, so one applicant per
+    // row still holds. Absent when only one runs at a time.
     tableNumber: v.optional(v.number()),
     createdBy: v.id("users"),
   })

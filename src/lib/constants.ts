@@ -24,6 +24,26 @@ export const SPECIAL_ROLES = {
 
 export type SpecialRole = keyof typeof SPECIAL_ROLES;
 
+/**
+ * What one of several parallel interviews at the same time is called.
+ *
+ * The underlying model is identical for both rounds - N rows sharing a time
+ * window, one applicant each - but "table" only means something at an
+ * assessment centre. A telephone round runs concurrent calls.
+ */
+export const PARALLEL_SLOT_LABELS = {
+  telephone: {
+    one: "Interview",
+    field: "Interviews per Time Slot",
+    help: "How many interviews run at the same time. Each takes one applicant.",
+  },
+  assessment_center: {
+    one: "Table",
+    field: "Tables per Time Slot",
+    help: "How many tables run at the same time. Each seats one applicant.",
+  },
+} as const;
+
 export const REVIEW_TYPES = {
   application: { label: "Application" },
   telephone: { label: "Telephone" },

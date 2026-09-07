@@ -31,9 +31,9 @@ export const batchCreate = mutation({
     duration: v.number(),
     type: slotTypeValidator,
     maxInterviewers: v.number(),
-    // Parallel tables per time window. Assessment centres run several at once;
-    // telephone interviews are always 1.
-    tables: v.optional(v.number()),
+    // How many interviews run in parallel at each time window - tables at an
+    // assessment centre, concurrent calls in a telephone round.
+    parallelCount: v.optional(v.number()),
     autoAssign: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -50,15 +50,22 @@ export const batchCreate = mutation({
     }
 
     // Validate inputs
-    if (![15, 30, 45, 60].includes(args.duration)) {
-      throw new Error("Duration must be 15, 30, 45, or 60 minutes");
+    // Kept in step with DURATION_OPTIONS in BatchCreateDialog.
+    if (![15, 20, 30, 45, 60].includes(args.duration)) {
+      throw new Error("Duration must be 15, 20, 30, 45, or 60 minutes");
     }
     if (args.maxInterviewers < 1) {
       throw new Error("Max interviewers must be at least 1");
     }
-    const tables = args.tables ?? 1;
-    if (!Number.isInteger(tables) || tables < 1 || tables > 20) {
-      throw new Error("Tables must be a whole number between 1 and 20");
+    const parallelCount = args.parallelCount ?? 1;
+    if (
+      !Number.isInteger(parallelCount) ||
+      parallelCount < 1 ||
+      parallelCount > 20
+    ) {
+      throw new Error(
+        "Interviews per time slot must be a whole number between 1 and 20"
+      );
     }
 
     const startMin = toMinutes(args.startTime);
@@ -74,15 +81,17 @@ export const batchCreate = mutation({
       const slotStart = fromMinutes(currentMin);
       const slotEnd = fromMinutes(currentMin + args.duration);
 
-      // One row per table, all sharing the same time window.
-      for (let table = 1; table <= tables; table++) {
+      // One row per parallel interview, all sharing the same time window.
+      for (let index = 1; index <= parallelCount; index++) {
         const slotId = await ctx.db.insert("interviewSlots", {
           date: args.date,
           startTime: slotStart,
           endTime: slotEnd,
           type: args.type,
           maxInterviewers: args.maxInterviewers,
-          tableNumber: tables > 1 ? table : undefined,
+          // Left unset when only one runs at a time - a lone slot needs no
+          // number, and numbering it would put a meaningless badge on it.
+          tableNumber: parallelCount > 1 ? index : undefined,
           createdBy: userId,
         });
         slotIds.push(slotId);
