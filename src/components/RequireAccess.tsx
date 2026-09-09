@@ -8,7 +8,8 @@ interface RequireAccessProps {
     | "attendance"
     | "member"
     | "cv_reviewer"
-    | "applications";
+    | "applications"
+    | "admin_special";
   children: React.ReactNode;
 }
 
@@ -22,6 +23,7 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
     isBoardMember,
     canRecordAttendance,
     isCvReviewer,
+    isAdminSpecialRole,
     canConductTelephoneInterviews,
     isAlumni,
     isLoading,
@@ -41,6 +43,11 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
       break;
     case "attendance":
       allowed = canRecordAttendance;
+      break;
+    // The Admin special role only. Distinct from "admin" above, which admits
+    // every board member - some pages are about the board, not for them.
+    case "admin_special":
+      allowed = isAdminSpecialRole;
       break;
     case "cv_reviewer":
       allowed = !!isCvReviewer;

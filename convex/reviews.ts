@@ -4,7 +4,11 @@ import { query, mutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { canConductTelephoneInterviews, isBoardMember } from "./permissions";
+import {
+  canConductTelephoneInterviews,
+  isAdminSpecialRole,
+  isBoardMember,
+} from "./permissions";
 import {
   REVIEW_CATEGORIES,
   SCORE_MAX,
@@ -436,5 +440,89 @@ export const listUnreviewed = query({
 
     // bookingToken is a bearer capability - strip it, as list/getById do.
     return candidates.map(({ bookingToken: _bookingToken, ...rest }) => rest);
+  },
+});
+
+/**
+ * Per-reviewer activity across the two board-run rounds.
+ *
+ * For the person administering the society, not for the board: the board are
+ * the subject here, so this is gated on the Admin special role rather than on
+ * hasAdminAccess, which every board member passes.
+ *
+ * Reported per review type, since the categories differ between rounds and an
+ * average mixing CV with Technical would mean nothing.
+ */
+export const reviewerOverview = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile || !isAdminSpecialRole(profile)) return null;
+
+    const profiles = await ctx.db.query("profiles").collect();
+    const reviews = await ctx.db.query("reviews").collect();
+
+    const TYPES = ["application", "telephone"] as const;
+
+    // Board members appear even with no reviews - who has not started is as
+    // useful as who has. Anyone else with reviews of these types is included
+    // too, so a TI Reviewer's calls aren't quietly missing from the totals.
+    const included = new Map<string, (typeof profiles)[number]>();
+    for (const p of profiles) {
+      if (isBoardMember(p)) included.set(p.userId.toString(), p);
+    }
+    for (const review of reviews) {
+      if (!TYPES.includes(review.reviewType as (typeof TYPES)[number])) continue;
+      const key = review.reviewerId.toString();
+      if (included.has(key)) continue;
+      const reviewer = profiles.find((p) => p.userId.toString() === key);
+      if (reviewer) included.set(key, reviewer);
+    }
+
+    const rows = [...included.values()].map((reviewer) => {
+      const key = reviewer.userId.toString();
+      const mine = reviews.filter((r) => r.reviewerId.toString() === key);
+
+      const byType = TYPES.map((type) => {
+        const scoped = mine.filter((r) => r.reviewType === type);
+
+        const categories = REVIEW_CATEGORIES[type].map(({ key: cat, label }) => {
+          const values = scoped
+            .map((r) => r.scores[cat])
+            .filter((v): v is number => typeof v === "number");
+          return {
+            key: cat,
+            label,
+            average:
+              values.length === 0
+                ? null
+                : Math.round(
+                    (values.reduce((a, b) => a + b, 0) / values.length) * 100
+                  ) / 100,
+          };
+        });
+
+        return { type, count: scoped.length, categories };
+      });
+
+      return {
+        userId: reviewer.userId,
+        name: reviewer.displayName,
+        role: reviewer.role,
+        specialRole: reviewer.specialRole ?? null,
+        byType,
+        // Board members with nothing to show still belong in the list; this
+        // lets the page sort them last without inventing a zero average.
+        totalReviews: byType.reduce((sum, t) => sum + t.count, 0),
+      };
+    });
+
+    return rows.sort((a, b) => a.name.localeCompare(b.name));
   },
 });

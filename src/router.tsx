@@ -27,6 +27,7 @@ import { ApplicantsPage } from "./pages/applications/ApplicantsPage";
 import { ApplicantDetailPage } from "./pages/applications/ApplicantDetailPage";
 import { InterviewsPage } from "./pages/applications/InterviewsPage";
 import { ReviewsPage } from "./pages/applications/ReviewsPage";
+import { ReviewerStatsPage } from "./pages/applications/ReviewerStatsPage";
 import { ProfileSetupPage } from "./pages/ProfileSetupPage";
 import { PendingApprovalPage } from "./pages/PendingApprovalPage";
 import { RejectedPage } from "./pages/RejectedPage";
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: "applications/applicants/:id", element: <RequireAccess check="applications"><ApplicantDetailPage /></RequireAccess> },
       { path: "applications/interviews", element: <RequireAccess check="applications"><InterviewsPage /></RequireAccess> },
       { path: "applications/reviews", element: <RequireAccess check="applications"><ReviewsPage /></RequireAccess> },
+      { path: "applications/reviewer-stats", element: <RequireAccess check="admin_special"><ReviewerStatsPage /></RequireAccess> },
       { path: "members", element: <MembersPage /> },
       { path: "members/:userId", element: <MemberProfilePage /> },
       { path: "stocks", element: <RequireAccess check="member"><StocksPage /></RequireAccess> },

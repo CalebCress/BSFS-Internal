@@ -44,6 +44,9 @@ const applicationSubItems = [
   { title: "Applicants", path: "/applications/applicants" },
   { title: "Interviews", path: "/applications/interviews" },
   { title: "Reviews", path: "/applications/reviews" },
+  // For whoever administers the society, not for the board - the board are
+  // the subject of this one.
+  { title: "Reviewer Activity", path: "/applications/reviewer-stats", adminOnly: true },
 ];
 
 const stockSubItems = [
@@ -75,6 +78,7 @@ export function AppSidebar() {
     isBoardMember,
     canRecordAttendance,
     isCvReviewer,
+    isAdminSpecialRole,
     canConductTelephoneInterviews,
     isAlumni,
   } = useCurrentProfile();
@@ -144,6 +148,7 @@ export function AppSidebar() {
                     <SidebarMenuSub>
                       {applicationSubItems
                         .filter((item) => !item.boardOnly || isBoardMember)
+                        .filter((item) => !item.adminOnly || isAdminSpecialRole)
                         .map((item) => {
                           const isSubActive =
                             item.path === "/applications"

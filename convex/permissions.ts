@@ -45,3 +45,21 @@ export function canConductTelephoneInterviews(profile: {
   }
   return isBoardMember(profile) || profile.specialRole === "ti_reviewer";
 }
+
+/**
+ * Holds the Admin special role specifically.
+ *
+ * Deliberately NOT hasAdminAccess, which also admits every board member. Some
+ * things are for the person administering the society rather than for the
+ * board as a whole - reviewer statistics, say, where the board are the subject
+ * rather than the audience.
+ */
+export function isAdminSpecialRole(profile: {
+  specialRole?: string;
+  status?: string;
+}): boolean {
+  if (profile.status !== undefined && profile.status !== "approved") {
+    return false;
+  }
+  return profile.specialRole === "admin";
+}
