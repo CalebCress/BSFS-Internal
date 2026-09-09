@@ -20,6 +20,7 @@ interface SlotData {
   type: "telephone" | "assessment_center";
   maxInterviewers: number;
   tableNumber?: number;
+  location?: string;
   applicantId?: Id<"applicants">;
   signupCount: number;
   signupUserIds: string[];

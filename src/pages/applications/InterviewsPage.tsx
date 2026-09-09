@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BatchCreateDialog } from "./components/BatchCreateDialog";
 import { SlotCard } from "./components/SlotCard";
 import { ManageInterviewersDialog } from "./components/ManageInterviewersDialog";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Plus, Calendar, Clock, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 type SlotType = "telephone" | "assessment_center";
@@ -64,6 +65,13 @@ export function InterviewsPage() {
   const [deleting, setDeleting] = useState(false);
   const [managingSlotId, setManagingSlotId] =
     useState<Id<"interviewSlots"> | null>(null);
+  // Editing the location of a whole day: { date, type } identifies the group.
+  const [editingLocation, setEditingLocation] = useState<{
+    date: string;
+    type: SlotType;
+    value: string;
+  } | null>(null);
+  const [savingLocation, setSavingLocation] = useState(false);
 
   // Queries
   const slots = useQuery(api.interviewSlots.list, {});
@@ -75,6 +83,7 @@ export function InterviewsPage() {
   const cancelMutation = useMutation(api.interviewSignups.cancel);
   const deleteMutation = useMutation(api.interviewSlots.remove);
   const reassignMutation = useMutation(api.interviewSlots.update);
+  const setLocationMutation = useMutation(api.interviewSlots.setLocation);
 
   // Loading states for individual operations
   const [loadingSlot, setLoadingSlot] = useState<string | null>(null);
@@ -173,6 +182,30 @@ export function InterviewsPage() {
   // slot data and the dialog must show the roster it just changed, not a stale
   // copy captured when it opened.
   const managingSlot = slots?.find((s) => s._id === managingSlotId) ?? null;
+
+  const handleSaveLocation = async () => {
+    if (!editingLocation) return;
+    setSavingLocation(true);
+    try {
+      const result = await setLocationMutation({
+        date: editingLocation.date,
+        type: editingLocation.type,
+        location: editingLocation.value,
+      });
+      toast.success(
+        editingLocation.value.trim()
+          ? `Location set on ${result.updated} slot${result.updated !== 1 ? "s" : ""}`
+          : "Location cleared"
+      );
+      setEditingLocation(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not set the location"
+      );
+    } finally {
+      setSavingLocation(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
@@ -322,7 +355,44 @@ export function InterviewsPage() {
           ) : (
             sortedDates.map((date) => (
               <div key={date} className="space-y-3">
-                <h3 className="text-lg font-semibold">{formatDate(date)}</h3>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h3 className="text-lg font-semibold">{formatDate(date)}</h3>
+                  {/* Per day, not per slot: a day of interviews happens in one
+                      place, and thirty cards each with their own address would
+                      be unreadable and impossible to keep consistent. */}
+                  {(() => {
+                    const daySlots = slotsByDate[date];
+                    const withLocation = daySlots.find((s) => s.location);
+                    const type = daySlots[0]?.type;
+                    return (
+                      <>
+                        {withLocation?.location && (
+                          <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {withLocation.location}
+                          </span>
+                        )}
+                        {hasAdminAccess && type && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                            onClick={() =>
+                              setEditingLocation({
+                                date,
+                                type,
+                                value: withLocation?.location ?? "",
+                              })
+                            }
+                          >
+                            {withLocation?.location
+                              ? "Change location"
+                              : "Add location"}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {slotsByDate[date].map((slot) => (
                     <SlotCard
@@ -434,6 +504,52 @@ export function InterviewsPage() {
         }}
         formatDate={formatDate}
       />
+
+      {/* Set the location for a day */}
+      <Dialog
+        open={editingLocation !== null}
+        onOpenChange={(open) => {
+          if (!open && !savingLocation) setEditingLocation(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Interview location</DialogTitle>
+            <DialogDescription>
+              {editingLocation && formatDate(editingLocation.date)}. Applicants
+              see this when they book, on their confirmation, and in their
+              confirmation email.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Input
+            autoFocus
+            placeholder="e.g. Via Sarfatti 25, Room 3-E4-SR03"
+            value={editingLocation?.value ?? ""}
+            onChange={(e) =>
+              setEditingLocation((prev) =>
+                prev ? { ...prev, value: e.target.value } : prev
+              )
+            }
+          />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingLocation(null)}
+              disabled={savingLocation}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleSaveLocation()}
+              disabled={savingLocation}
+            >
+              {savingLocation ? "Saving..." : "Save location"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm deleting a slot */}
       <Dialog

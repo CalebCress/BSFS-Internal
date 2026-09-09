@@ -63,6 +63,7 @@ export function BatchCreateDialog({
   // Parallel interviews per time window: tables at an assessment centre,
   // concurrent calls in a telephone round.
   const [parallelCount, setParallelCount] = useState(1);
+  const [location, setLocation] = useState("");
   const [autoAssign, setAutoAssign] = useState(false);
 
   const slotCount = useMemo(() => {
@@ -83,6 +84,7 @@ export function BatchCreateDialog({
     setDuration(DEFAULT_DURATION.telephone);
     setMaxInterviewers(2);
     setParallelCount(1);
+    setLocation("");
     setAutoAssign(false);
   };
 
@@ -108,6 +110,7 @@ export function BatchCreateDialog({
         type,
         maxInterviewers,
         parallelCount,
+        location: location.trim() || undefined,
         autoAssign,
       });
       const msg = `Created ${result.slotsCreated} slot${result.slotsCreated !== 1 ? "s" : ""}${
@@ -253,6 +256,24 @@ export function BatchCreateDialog({
               {PARALLEL_SLOT_LABELS[type].help}
             </p>
           </div>
+
+          {/* Location - an assessment centre happens somewhere, and the
+              applicant is told where when they book. A telephone interview
+              has nowhere to be. */}
+          {type === "assessment_center" && (
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <Input
+                placeholder="e.g. Via Sarfatti 25, Room 3-E4-SR03"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Shown to applicants when they book, on their confirmation, and
+                in their confirmation email. Can be set later.
+              </p>
+            </div>
+          )}
 
           {/* Auto-assign toggle */}
           <div className="space-y-1">

@@ -37,6 +37,9 @@ export const batchCreate = mutation({
     // How many interviews run in parallel at each time window - tables at an
     // assessment centre, concurrent calls in a telephone round.
     parallelCount: v.optional(v.number()),
+    // Where to turn up. Shown to the applicant when they book, on their
+    // confirmation, and in the confirmation email.
+    location: v.optional(v.string()),
     autoAssign: v.boolean(),
   },
   handler: async (ctx, args) => {
@@ -95,6 +98,7 @@ export const batchCreate = mutation({
           // Left unset when only one runs at a time - a lone slot needs no
           // number, and numbering it would put a meaningless badge on it.
           tableNumber: parallelCount > 1 ? index : undefined,
+          location: args.location?.trim() || undefined,
           createdBy: userId,
         });
         slotIds.push(slotId);
@@ -265,6 +269,48 @@ export const update = mutation({
     if (!slot) throw new Error("Slot not found");
 
     await ctx.db.patch(args.slotId, { applicantId: args.applicantId });
+  },
+});
+
+/**
+ * Set the location on every slot of one type on one date (board members only).
+ *
+ * Per day rather than per slot: a day's interviews happen in one place, and
+ * setting it on thirty cards individually is not a thing anyone would do. It
+ * also means a location can be added after the slots exist, which matters -
+ * otherwise a forgotten address means deleting and rebuilding the day.
+ */
+export const setLocation = mutation({
+  args: {
+    date: v.string(),
+    type: slotTypeValidator,
+    location: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile || !hasAdminAccess(profile)) {
+      throw new Error("Only board members can set the interview location");
+    }
+
+    const slots = (
+      await ctx.db
+        .query("interviewSlots")
+        .withIndex("by_date", (q) => q.eq("date", args.date))
+        .collect()
+    ).filter((slot) => slot.type === args.type);
+
+    const location = args.location.trim() || undefined;
+    for (const slot of slots) {
+      await ctx.db.patch(slot._id, { location });
+    }
+
+    return { updated: slots.length };
   },
 });
 

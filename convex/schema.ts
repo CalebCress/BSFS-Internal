@@ -144,6 +144,10 @@ export default defineSchema({
     // Each is its own row sharing date/startTime/endTime, so one applicant per
     // row still holds. Absent when only one runs at a time.
     tableNumber: v.optional(v.number()),
+    // Where the applicant should physically go. Assessment centres happen
+    // somewhere; a telephone interview does not, so this is usually unset for
+    // those. Optional because slots created before it existed have none.
+    location: v.optional(v.string()),
     createdBy: v.id("users"),
   })
     .index("by_date", ["date"])

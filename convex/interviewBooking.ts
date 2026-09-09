@@ -183,13 +183,18 @@ async function sendBookingConfirmation(
   const when = `${formatSlotDate(slot.date)} at ${slot.startTime}`;
   const safeName = escapeHtml(applicant.firstName);
   const safeWhen = escapeHtml(when);
+  const location = slot.location?.trim() || null;
 
   const html = `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:520px">
   <p>Hi ${safeName},</p>
   <p>Your BSFS ${label} is confirmed for:</p>
   <p style="margin:24px 0;padding:16px 20px;background:#f4f6fb;border-left:3px solid #0b3d91;font-size:16px;font-weight:600">
-    ${safeWhen} (${escapeHtml(slot.startTime)}&ndash;${escapeHtml(slot.endTime)}, Italian time)
+    ${safeWhen} (${escapeHtml(slot.startTime)}&ndash;${escapeHtml(slot.endTime)}, Italian time)${
+      location
+        ? `<br /><span style="font-weight:400;font-size:15px">Where: ${escapeHtml(location)}</span>`
+        : ""
+    }
   </p>
   <p>We look forward to speaking with you.</p>
   <p style="color:#555">
@@ -204,6 +209,7 @@ async function sendBookingConfirmation(
     `Your BSFS ${label} is confirmed for:`,
     "",
     `${when} (${slot.startTime}-${slot.endTime}, Italian time)`,
+    ...(location ? [`Where: ${location}`] : []),
     "",
     "We look forward to speaking with you.",
     "",
@@ -255,6 +261,7 @@ export const getByToken = query({
         endTime: string;
         available: boolean;
         isMine: boolean;
+        location: string | null;
       }
     >();
 
@@ -269,6 +276,8 @@ export const getByToken = query({
       if (existing) {
         existing.available = existing.available || free;
         existing.isMine = existing.isMine || mine;
+        // Tables at one time share a room; take whichever row has it set.
+        existing.location = existing.location ?? slot.location ?? null;
       } else {
         groups.set(key, {
           date: slot.date,
@@ -276,6 +285,7 @@ export const getByToken = query({
           endTime: slot.endTime,
           available: free,
           isMine: mine,
+          location: slot.location ?? null,
         });
       }
     }
@@ -295,6 +305,7 @@ export const getByToken = query({
           date: current.date,
           startTime: current.startTime,
           endTime: current.endTime,
+          location: current.location ?? null,
           changeDeadlineMs:
             slotStartMs(current.date, current.startTime) - CUTOFF_MS,
           canChange:

@@ -4,7 +4,13 @@ import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { toast } from "sonner";
-import { CalendarCheck, CheckCircle, Clock, HelpCircle } from "lucide-react";
+import {
+  CalendarCheck,
+  CheckCircle,
+  Clock,
+  HelpCircle,
+  MapPin,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -21,7 +27,13 @@ type SlotOption = {
   endTime: string;
   available: boolean;
   isMine: boolean;
+  location: string | null;
 };
+
+/** The location shared by a day's slots, if any of them carry one. */
+function locationForDate(slots: SlotOption[]): string | null {
+  return slots.find((slot) => slot.location)?.location ?? null;
+}
 
 const TYPE_LABELS = {
   telephone: "Telephone Interview",
@@ -215,6 +227,12 @@ export function PublicInterviewBookingPage() {
               {formatSlotDate(booking.date)} at {booking.startTime} –{" "}
               {booking.endTime}
             </CardDescription>
+            {booking.location && (
+              <CardDescription className="flex items-start gap-1.5 text-foreground">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>{booking.location}</span>
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent>
             {!allowReschedule ? (
@@ -282,6 +300,16 @@ export function PublicInterviewBookingPage() {
                   <CardTitle className="text-lg">
                     {formatSlotDate(date)}
                   </CardTitle>
+                  {/* On the day, not on every time button: a day's interviews
+                      happen in one place, so repeating it nine times would be
+                      noise. Falls away silently for telephone rounds, which
+                      have nowhere to be. */}
+                  {locationForDate(slots) && (
+                    <CardDescription className="flex items-start gap-1.5">
+                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{locationForDate(slots)}</span>
+                    </CardDescription>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -341,6 +369,11 @@ export function PublicInterviewBookingPage() {
                         {formatSlotDate(selectedSlot.date)} at{" "}
                         {selectedSlot.startTime} – {selectedSlot.endTime}
                       </span>
+                      {selectedSlot.location && (
+                        <div className="mt-0.5 text-muted-foreground">
+                          {selectedSlot.location}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <span className="text-muted-foreground">
