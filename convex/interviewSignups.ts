@@ -3,8 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { isBoardMember } from "./permissions";
-import { isBoardOnlyReviewType } from "./reviewCategories";
+import { canConductTelephoneInterviews, isBoardMember } from "./permissions";
 import { overlaps, type TimeWindow } from "./interviewTimes";
 
 /**
@@ -43,16 +42,18 @@ export const signup = mutation({
     const slot = await ctx.db.get(args.slotId);
     if (!slot) throw new Error("Slot not found");
 
-    // Telephone interviews are run by the board, so they are neither listed to
-    // nor bookable by anyone else. Enforced here and not just hidden in the UI:
-    // the slot id is guessable from a shared link or an old page.
-    if (isBoardOnlyReviewType(slot.type)) {
+    // Telephone interviews are run by the board and by TI Reviewers, so they
+    // are neither listed to nor bookable by anyone else. Enforced here and not
+    // just hidden in the UI: the slot id survives in an old page or a link.
+    if (slot.type === "telephone") {
       const profile = await ctx.db
         .query("profiles")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
         .unique();
-      if (!profile || !isBoardMember(profile)) {
-        throw new Error("Only board members conduct telephone interviews");
+      if (!profile || !canConductTelephoneInterviews(profile)) {
+        throw new Error(
+          "Only board members and TI Reviewers conduct telephone interviews"
+        );
       }
     }
 
@@ -126,7 +127,7 @@ export const listMySignups = query({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    const board = !!profile && isBoardMember(profile);
+    const telephone = !!profile && canConductTelephoneInterviews(profile);
 
     const mySignups = await ctx.db
       .query("interviewSignups")
@@ -137,9 +138,9 @@ export const listMySignups = query({
       mySignups.map(async (signup) => {
         const slot = await ctx.db.get(signup.slotId);
         if (!slot) return null;
-        // Consistent with the schedule: a non-board member is never shown a
-        // telephone slot, including one they somehow hold.
-        if (!board && isBoardOnlyReviewType(slot.type)) return null;
+        // Consistent with the schedule: someone who does not conduct telephone
+        // interviews is never shown a telephone slot, including one they hold.
+        if (!telephone && slot.type === "telephone") return null;
 
         // Get signup count for this slot
         const allSignups = await ctx.db
@@ -216,14 +217,14 @@ export const moveInterviewer = mutation({
     // Don't move someone into a round they can't see. A committee member put
     // on a telephone slot would have a commitment that never appears in their
     // schedule or their signups, and that they cannot cancel.
-    if (isBoardOnlyReviewType(target.type)) {
+    if (target.type === "telephone") {
       const movedProfile = await ctx.db
         .query("profiles")
         .withIndex("by_userId", (q) => q.eq("userId", args.userId))
         .unique();
-      if (!movedProfile || !isBoardMember(movedProfile)) {
+      if (!movedProfile || !canConductTelephoneInterviews(movedProfile)) {
         throw new Error(
-          "Only board members can be assigned to telephone interviews"
+          "Only board members and TI Reviewers can be assigned to telephone interviews"
         );
       }
     }

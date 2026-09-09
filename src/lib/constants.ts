@@ -20,6 +20,7 @@ export const SPECIAL_ROLES = {
   admin: { label: "Admin" },
   attendance_tracker: { label: "Attendance Tracker" },
   cv_reviewer: { label: "CV Reviewer" },
+  ti_reviewer: { label: "TI Reviewer" },
 } as const;
 
 export type SpecialRole = keyof typeof SPECIAL_ROLES;
@@ -60,6 +61,7 @@ export {
   SCORE_MIN,
   SCORE_MAX,
   BOARD_ONLY_REVIEW_TYPES,
+  canSeeReviewType,
   isBoardOnlyReviewType,
   stageToReviewType,
 } from "../../convex/reviewCategories";

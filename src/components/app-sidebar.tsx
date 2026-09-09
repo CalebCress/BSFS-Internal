@@ -75,6 +75,7 @@ export function AppSidebar() {
     isBoardMember,
     canRecordAttendance,
     isCvReviewer,
+    canConductTelephoneInterviews,
     isAlumni,
   } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
@@ -123,8 +124,9 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Applications (hidden from alumni) */}
-              {!isAlumni && (
+              {/* Applications: hidden from alumni, unless they hold a role
+                  that needs it - a TI Reviewer signs up here. */}
+              {(!isAlumni || canConductTelephoneInterviews) && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={isInApplications}

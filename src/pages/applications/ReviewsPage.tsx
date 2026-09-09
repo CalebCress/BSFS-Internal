@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StageBadge } from "./components/StageBadge";
 import { Star } from "lucide-react";
-import { isBoardOnlyReviewType, type ReviewType } from "@/lib/constants";
+import { canSeeReviewType, type ReviewType } from "@/lib/constants";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 
 const ALL_REVIEW_TYPE_TABS: { value: ReviewType; label: string }[] = [
@@ -19,15 +19,20 @@ const ALL_REVIEW_TYPE_TABS: { value: ReviewType; label: string }[] = [
 
 export function ReviewsPage() {
   const navigate = useNavigate();
-  const { isBoardMember } = useCurrentProfile();
+  const { isBoardMember, canConductTelephoneInterviews } =
+    useCurrentProfile();
 
   // Application and telephone queues are board-only.
   const REVIEW_TYPE_TABS = useMemo(
     () =>
       ALL_REVIEW_TYPE_TABS.filter(
-        (tab) => isBoardMember || !isBoardOnlyReviewType(tab.value)
+        (tab) =>
+          canSeeReviewType(tab.value, {
+            board: isBoardMember,
+            telephone: canConductTelephoneInterviews,
+          })
       ),
-    [isBoardMember]
+    [isBoardMember, canConductTelephoneInterviews]
   );
 
   const [tabOverride, setTabOverride] = useState<ReviewType | null>(null);

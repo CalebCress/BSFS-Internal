@@ -9,6 +9,11 @@ export function useCurrentProfile() {
   const canRecordAttendance =
     hasAdminAccess || profile?.specialRole === "attendance_tracker";
   const isCvReviewer = profile?.specialRole === "cv_reviewer";
+  // Conducts telephone interviews: the board, plus anyone holding the TI
+  // Reviewer role. Mirrors canConductTelephoneInterviews in convex/permissions.
+  const canConductTelephoneInterviews =
+    profile?.status === "approved" &&
+    (isBoardMember || profile?.specialRole === "ti_reviewer");
 
   return {
     profile,
@@ -16,6 +21,7 @@ export function useCurrentProfile() {
     hasAdminAccess,
     canRecordAttendance,
     isCvReviewer,
+    canConductTelephoneInterviews,
     isCommitteeMember: profile?.role === "committee_member",
     isAlumni: profile?.role === "alumni",
     isPending: profile?.status === "pending",

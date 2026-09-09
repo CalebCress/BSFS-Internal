@@ -4,11 +4,12 @@ import { query, mutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { isBoardMember } from "./permissions";
+import { canConductTelephoneInterviews, isBoardMember } from "./permissions";
 import {
   REVIEW_CATEGORIES,
   SCORE_MAX,
   SCORE_MIN,
+  canSeeReviewType,
   isBoardOnlyReviewType,
   isValidScore,
   type ReviewType,
@@ -106,8 +107,12 @@ async function canAccessReviewType(
     .query("profiles")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
     .unique();
+  if (!profile) return false;
 
-  return !!profile && isBoardMember(profile);
+  return canSeeReviewType(reviewType, {
+    board: isBoardMember(profile),
+    telephone: canConductTelephoneInterviews(profile),
+  });
 }
 
 /**

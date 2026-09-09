@@ -26,3 +26,22 @@ export function hasCvReviewerAccess(profile: {
 export function isBoardMember(profile: { role: string }): boolean {
   return profile.role === "board_member";
 }
+
+/**
+ * May this person conduct telephone interviews - sign up for the slots, see
+ * the schedule, review the applicants they take?
+ *
+ * The telephone round is the board's by default, but the TI Reviewer special
+ * role opens it to one more person without giving them a board seat. It is
+ * granted per person, so alumni can hold it too.
+ */
+export function canConductTelephoneInterviews(profile: {
+  role: string;
+  specialRole?: string;
+  status?: string;
+}): boolean {
+  if (profile.status !== undefined && profile.status !== "approved") {
+    return false;
+  }
+  return isBoardMember(profile) || profile.specialRole === "ti_reviewer";
+}

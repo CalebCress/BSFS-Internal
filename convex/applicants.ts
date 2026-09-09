@@ -1,7 +1,11 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { hasAdminAccess, isBoardMember } from "./permissions";
+import {
+  canConductTelephoneInterviews,
+  hasAdminAccess,
+  isBoardMember,
+} from "./permissions";
 import {
   isBoardOnlyReviewType,
   stageToReviewType,
@@ -44,6 +48,7 @@ export const list = query({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     const board = !!profile && isBoardMember(profile);
+    const telephoneAccess = !!profile && canConductTelephoneInterviews(profile);
 
     // The board runs the pipeline and sees all of it. Everyone else sees only
     // the applicants they are personally interviewing - the roster as a whole,
@@ -90,9 +95,13 @@ export const list = query({
       const scoped = mine.filter((r) => r.reviewType === type);
 
       // Aggregates summarise the underlying reviews, so they must obey the same
-      // board-only rule - otherwise a committee member could read the shape of
-      // application and telephone scores they aren't allowed to see.
-      const visible = board || !isBoardOnlyReviewType(type);
+      // rule - otherwise someone could read the shape of application and
+      // telephone scores they aren't allowed to see. A TI Reviewer conducts
+      // the telephone round, so telephone aggregates are theirs to read.
+      const visible =
+        board ||
+        !isBoardOnlyReviewType(type) ||
+        (type === "telephone" && telephoneAccess);
 
       // bookingToken is a bearer capability - never ship it to list views.
       const { bookingToken: _bookingToken, ...rest } = applicant;
@@ -135,8 +144,9 @@ export const getById = query({
     }
 
     // The CV and written answers are first-stage review material, so they are
-    // board-only - except for someone actually interviewing this applicant at
-    // the assessment centre, who needs the context to run the interview.
+    // board-only - except for someone actually interviewing this applicant,
+    // who needs the context to run the interview. That holds for either round:
+    // an assessment centre interviewer, or a TI Reviewer taking their call.
     const canViewApplication =
       board ||
       (await isUserSignedUpForInterview(
@@ -144,7 +154,8 @@ export const getById = query({
         args.id,
         "assessment_center",
         userId
-      ));
+      )) ||
+      (await isUserSignedUpForInterview(ctx, args.id, "telephone", userId));
 
     const form = await ctx.db.get(applicant.applicationFormId);
 

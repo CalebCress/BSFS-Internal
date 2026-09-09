@@ -14,7 +14,12 @@ export default defineSchema({
       v.literal("alumni")
     ),
     specialRole: v.optional(
-      v.union(v.literal("admin"), v.literal("attendance_tracker"), v.literal("cv_reviewer"))
+      v.union(
+        v.literal("admin"),
+        v.literal("attendance_tracker"),
+        v.literal("cv_reviewer"),
+        v.literal("ti_reviewer")
+      )
     ),
     phoneNumber: v.optional(v.string()),
     status: v.union(

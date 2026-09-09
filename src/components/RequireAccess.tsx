@@ -2,7 +2,13 @@ import { Navigate } from "react-router-dom";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 
 interface RequireAccessProps {
-  check: "admin" | "board" | "attendance" | "member" | "cv_reviewer";
+  check:
+    | "admin"
+    | "board"
+    | "attendance"
+    | "member"
+    | "cv_reviewer"
+    | "applications";
   children: React.ReactNode;
 }
 
@@ -16,6 +22,7 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
     isBoardMember,
     canRecordAttendance,
     isCvReviewer,
+    canConductTelephoneInterviews,
     isAlumni,
     isLoading,
   } = useCurrentProfile();
@@ -41,6 +48,12 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
     case "member":
       // "member" means non-alumni (committee_member or board_member)
       allowed = !isAlumni;
+      break;
+    // Like "member", but also admits an alumnus holding a special role that
+    // needs these pages - a TI Reviewer has to reach the schedule they sign up
+    // on and the applicants they take.
+    case "applications":
+      allowed = !isAlumni || canConductTelephoneInterviews;
       break;
   }
 

@@ -75,6 +75,22 @@ export function isBoardOnlyReviewType(reviewType: ReviewType): boolean {
   return BOARD_ONLY_REVIEW_TYPES.includes(reviewType);
 }
 
+/**
+ * May someone with these capabilities see and submit reviews of this type?
+ *
+ * Imported by both sides so the tabs a person is shown are exactly the ones
+ * the server will answer. `board` is a board seat; `telephone` is whoever
+ * conducts telephone interviews, which the TI Reviewer role also grants.
+ */
+export function canSeeReviewType(
+  reviewType: ReviewType,
+  caps: { board: boolean; telephone: boolean }
+): boolean {
+  if (!isBoardOnlyReviewType(reviewType)) return true;
+  if (reviewType === "telephone") return caps.telephone;
+  return caps.board;
+}
+
 /** The review type that matters for an applicant at a given stage. */
 export function stageToReviewType(stage: string): ReviewType {
   if (stage === "telephone") return "telephone";

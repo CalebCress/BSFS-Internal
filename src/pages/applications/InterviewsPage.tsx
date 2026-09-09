@@ -50,7 +50,12 @@ const toMinutes = (time: string) => {
 };
 
 export function InterviewsPage() {
-  const { profile, hasAdminAccess, isBoardMember } = useCurrentProfile();
+  const {
+    profile,
+    hasAdminAccess,
+    isBoardMember,
+    canConductTelephoneInterviews,
+  } = useCurrentProfile();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | SlotType>("all");
   const [assignedOnly, setAssignedOnly] = useState(false);
@@ -248,12 +253,12 @@ export function InterviewsPage() {
 
         {/* Schedule Tab */}
         <TabsContent value="schedule" className="mt-6 space-y-6">
-          {/* Type filter. Hidden for non-board members: telephone interviews
-              are board-run and never reach them, so a filter with one real
-              option would only invite them to look for slots that aren't
+          {/* Type filter, shown only to people who can see both rounds. For
+              anyone else telephone slots never arrive, so a filter with one
+              real option would only invite them to look for slots that aren't
               there. The server filters regardless of what is shown here. */}
           <div className="flex items-center gap-3">
-            {isBoardMember && (
+            {canConductTelephoneInterviews && (
               <Select
                 value={typeFilter}
                 onValueChange={(v) =>

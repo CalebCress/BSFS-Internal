@@ -425,6 +425,7 @@ export const updateSpecialRole = mutation({
       v.literal("admin"),
       v.literal("attendance_tracker"),
       v.literal("cv_reviewer"),
+      v.literal("ti_reviewer"),
       v.literal("none")
     ),
   },

@@ -48,7 +48,7 @@ import { toast } from "sonner";
 import {
   REVIEW_TYPES,
   REVIEW_CATEGORIES,
-  isBoardOnlyReviewType,
+  canSeeReviewType,
   type ReviewType,
 } from "@/lib/constants";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
@@ -128,14 +128,20 @@ export function ApplicantDetailPage() {
     }
   };
 
-  const { isBoardMember, hasAdminAccess } = useCurrentProfile();
+  const { isBoardMember, hasAdminAccess, canConductTelephoneInterviews } =
+    useCurrentProfile();
 
   // Application and telephone reviews are board-only, so a committee member
   // must not be offered them - nor be defaulted onto one, which would leave
   // every review query returning empty with no visible explanation.
   const permittedReviewTypes = (
     Object.keys(REVIEW_TYPES) as ReviewType[]
-  ).filter((type) => isBoardMember || !isBoardOnlyReviewType(type));
+  ).filter((type) =>
+    canSeeReviewType(type, {
+      board: isBoardMember,
+      telephone: canConductTelephoneInterviews,
+    })
+  );
 
   const stageReviewType = applicant
     ? stageToReviewType(applicant.stage)

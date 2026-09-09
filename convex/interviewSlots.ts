@@ -1,8 +1,11 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { hasAdminAccess, isBoardMember } from "./permissions";
-import { isBoardOnlyReviewType } from "./reviewCategories";
+import {
+  canConductTelephoneInterviews,
+  hasAdminAccess,
+  isBoardMember,
+} from "./permissions";
 
 /** Convert "HH:MM" to total minutes for arithmetic */
 function toMinutes(time: string): number {
@@ -150,14 +153,14 @@ export const list = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
 
-    // The telephone round is board-only, exactly as its reviews are - reusing
-    // isBoardOnlyReviewType keeps the schedule and the review gate from
-    // drifting apart. Committee members only ever see the assessment centre.
+    // The telephone round is run by the board and by TI Reviewers; everyone
+    // else only ever sees the assessment centre.
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     const board = !!profile && isBoardMember(profile);
+    const telephone = !!profile && canConductTelephoneInterviews(profile);
 
     let slots;
     if (args.type) {
@@ -179,8 +182,8 @@ export const list = query({
       slots = slots.filter((s) => s.date === args.date);
     }
 
-    if (!board) {
-      slots = slots.filter((s) => !isBoardOnlyReviewType(s.type));
+    if (!telephone) {
+      slots = slots.filter((s) => s.type !== "telephone");
     }
 
     // Interviewer names, resolved once for the whole page rather than per

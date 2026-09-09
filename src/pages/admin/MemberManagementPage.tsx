@@ -85,7 +85,12 @@ export function MemberManagementPage() {
 
   const handleSpecialRoleChange = async (
     profileId: Id<"profiles">,
-    specialRole: "admin" | "attendance_tracker" | "cv_reviewer" | "none",
+    specialRole:
+      | "admin"
+      | "attendance_tracker"
+      | "cv_reviewer"
+      | "ti_reviewer"
+      | "none",
     name: string
   ) => {
     try {
@@ -269,12 +274,14 @@ export function MemberManagementPage() {
                     onValueChange={(val) =>
                       void handleSpecialRoleChange(
                         member._id,
-                        val as "admin" | "attendance_tracker" | "cv_reviewer" | "none",
+                        val as
+                          | "admin"
+                          | "attendance_tracker"
+                          | "cv_reviewer"
+                          | "ti_reviewer"
+                          | "none",
                         member.displayName
                       )
-                    }
-                    disabled={
-                      member.role === "alumni"
                     }
                   >
                     <SelectTrigger className="w-[180px]">
@@ -290,6 +297,9 @@ export function MemberManagementPage() {
                       </SelectItem>
                       <SelectItem value="cv_reviewer">
                         {SPECIAL_ROLES.cv_reviewer.label}
+                      </SelectItem>
+                      <SelectItem value="ti_reviewer">
+                        {SPECIAL_ROLES.ti_reviewer.label}
                       </SelectItem>
                     </SelectContent>
                   </Select>
