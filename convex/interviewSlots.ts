@@ -314,6 +314,86 @@ export const setLocation = mutation({
   },
 });
 
+/**
+ * Apply settings to every slot of one interview type (board members only).
+ *
+ * Fields left undefined are left alone, so this changes exactly what was asked
+ * for rather than rewriting whole rows. `location: ""` clears it, which is the
+ * one case where "set to nothing" has to be distinguishable from "don't touch".
+ *
+ * NOTHING here removes an applicant or an interviewer. The patch object is
+ * built from the two editable fields only, and ctx.db.patch merges - it does
+ * not replace - so applicantId survives untouched. Interviewer signups live in
+ * their own table which this never writes to at all. Use db.patch here, never
+ * db.replace, which WOULD drop every field not named.
+ *
+ * Lowering maxInterviewers below what a slot already has signed up is allowed
+ * and reported rather than refused: nobody is thrown out of an interview they
+ * volunteered for by an edit made somewhere else. Those slots simply read as
+ * over capacity until someone cancels, and the count comes back so the caller
+ * can say so.
+ */
+export const updateAllOfType = mutation({
+  args: {
+    type: slotTypeValidator,
+    maxInterviewers: v.optional(v.number()),
+    location: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile || !hasAdminAccess(profile)) {
+      throw new Error("Only board members can edit interview slots");
+    }
+
+    if (args.maxInterviewers !== undefined) {
+      if (
+        !Number.isInteger(args.maxInterviewers) ||
+        args.maxInterviewers < 1 ||
+        args.maxInterviewers > 20
+      ) {
+        throw new Error("Max interviewers must be a whole number from 1 to 20");
+      }
+    }
+
+    const patch: {
+      maxInterviewers?: number;
+      location?: string | undefined;
+    } = {};
+    if (args.maxInterviewers !== undefined) {
+      patch.maxInterviewers = args.maxInterviewers;
+    }
+    if (args.location !== undefined) {
+      patch.location = args.location.trim() || undefined;
+    }
+    if (Object.keys(patch).length === 0) return { updated: 0, overCapacity: 0 };
+
+    const slots = await ctx.db
+      .query("interviewSlots")
+      .withIndex("by_type", (q) => q.eq("type", args.type))
+      .collect();
+
+    let overCapacity = 0;
+    for (const slot of slots) {
+      if (patch.maxInterviewers !== undefined) {
+        const signups = await ctx.db
+          .query("interviewSignups")
+          .withIndex("by_slot", (q) => q.eq("slotId", slot._id))
+          .collect();
+        if (signups.length > patch.maxInterviewers) overCapacity++;
+      }
+      await ctx.db.patch(slot._id, patch);
+    }
+
+    return { updated: slots.length, overCapacity };
+  },
+});
+
 // Delete a slot and all its signups (board members only)
 export const remove = mutation({
   args: { slotId: v.id("interviewSlots") },

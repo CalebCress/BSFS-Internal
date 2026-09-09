@@ -26,9 +26,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BatchCreateDialog } from "./components/BatchCreateDialog";
+import { EditAllSlotsDialog } from "./components/EditAllSlotsDialog";
 import { SlotCard } from "./components/SlotCard";
 import { ManageInterviewersDialog } from "./components/ManageInterviewersDialog";
-import { Plus, Calendar, Clock, MapPin } from "lucide-react";
+import { Plus, Calendar, Clock, MapPin, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 type SlotType = "telephone" | "assessment_center";
@@ -58,6 +59,7 @@ export function InterviewsPage() {
     canConductTelephoneInterviews,
   } = useCurrentProfile();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [editAllOpen, setEditAllOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | SlotType>("all");
   const [assignedOnly, setAssignedOnly] = useState(false);
   // Deleting a slot also drops its signups, so it is confirmed before it runs.
@@ -263,10 +265,16 @@ export function InterviewsPage() {
           </p>
         </div>
         {hasAdminAccess && (
-          <Button onClick={() => setBatchDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Slots
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setEditAllOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit All
+            </Button>
+            <Button onClick={() => setBatchDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Slots
+            </Button>
+          </div>
         )}
       </div>
 
@@ -614,6 +622,13 @@ export function InterviewsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk edit every slot of one type */}
+      <EditAllSlotsDialog
+        open={editAllOpen}
+        onOpenChange={setEditAllOpen}
+        slots={slots ?? []}
+      />
 
       {/* Batch Create Dialog */}
       <BatchCreateDialog
