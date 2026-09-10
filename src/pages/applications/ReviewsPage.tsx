@@ -19,8 +19,11 @@ const ALL_REVIEW_TYPE_TABS: { value: ReviewType; label: string }[] = [
 
 export function ReviewsPage() {
   const navigate = useNavigate();
-  const { isBoardMember, canConductTelephoneInterviews } =
-    useCurrentProfile();
+  const {
+    isBoardMember,
+    canConductTelephoneInterviews,
+    canReviewApplications,
+  } = useCurrentProfile();
 
   // Application and telephone queues are board-only.
   const REVIEW_TYPE_TABS = useMemo(
@@ -30,9 +33,10 @@ export function ReviewsPage() {
           canSeeReviewType(tab.value, {
             board: isBoardMember,
             telephone: canConductTelephoneInterviews,
+            application: canReviewApplications,
           })
       ),
-    [isBoardMember, canConductTelephoneInterviews]
+    [isBoardMember, canConductTelephoneInterviews, canReviewApplications]
   );
 
   const [tabOverride, setTabOverride] = useState<ReviewType | null>(null);

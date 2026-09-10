@@ -80,14 +80,17 @@ export function isBoardOnlyReviewType(reviewType: ReviewType): boolean {
  *
  * Imported by both sides so the tabs a person is shown are exactly the ones
  * the server will answer. `board` is a board seat; `telephone` is whoever
- * conducts telephone interviews, which the TI Reviewer role also grants.
+ * conducts telephone interviews, which the TI Reviewer role also grants; and
+ * `application` is whoever reviews CVs and written answers, which the CV
+ * Reviewer role also grants.
  */
 export function canSeeReviewType(
   reviewType: ReviewType,
-  caps: { board: boolean; telephone: boolean }
+  caps: { board: boolean; telephone: boolean; application: boolean }
 ): boolean {
   if (!isBoardOnlyReviewType(reviewType)) return true;
   if (reviewType === "telephone") return caps.telephone;
+  if (reviewType === "application") return caps.application;
   return caps.board;
 }
 

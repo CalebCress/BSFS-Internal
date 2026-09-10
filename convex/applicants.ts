@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   canConductTelephoneInterviews,
+  canReviewApplications,
   hasAdminAccess,
   isBoardMember,
 } from "./permissions";
@@ -18,7 +19,10 @@ import {
   type ReviewLike,
 } from "./reviewStats";
 import { isUserSignedUpForInterview } from "./reviews";
-import { applicantIdsIAmInterviewing } from "./interviewAccess";
+import {
+  applicantIdsIAmInterviewing,
+  canAccessApplicant,
+} from "./interviewAccess";
 
 export const list = query({
   args: {
@@ -49,15 +53,21 @@ export const list = query({
       .unique();
     const board = !!profile && isBoardMember(profile);
     const telephoneAccess = !!profile && canConductTelephoneInterviews(profile);
+    const applicationAccess = !!profile && canReviewApplications(profile);
 
-    // The board runs the pipeline and sees all of it. Everyone else sees only
-    // the applicants they are personally interviewing - the roster as a whole,
-    // including who was rejected and at which stage, is not theirs to read.
+    // The board runs the pipeline and sees all of it. Everyone else sees the
+    // applicants they are personally interviewing, plus - for a CV Reviewer -
+    // those still in the application round they were given. The roster as a
+    // whole, including who was rejected and at which stage, stays the board's.
     const applicants = board
       ? all
       : await (async () => {
           const mine = await applicantIdsIAmInterviewing(ctx, userId);
-          return all.filter((a) => mine.has(a._id.toString()));
+          return all.filter(
+            (a) =>
+              mine.has(a._id.toString()) ||
+              (applicationAccess && a.stage === "applied")
+          );
         })();
 
     // One scan of the whole reviews table rather than a query per applicant:
@@ -101,7 +111,8 @@ export const list = query({
       const visible =
         board ||
         !isBoardOnlyReviewType(type) ||
-        (type === "telephone" && telephoneAccess);
+        (type === "telephone" && telephoneAccess) ||
+        (type === "application" && applicationAccess);
 
       // bookingToken is a bearer capability - never ship it to list views.
       const { bookingToken: _bookingToken, ...rest } = applicant;
@@ -135,20 +146,22 @@ export const getById = query({
       .unique();
     const board = !!profile && isBoardMember(profile);
 
-    // Same rule as the list: someone not interviewing this applicant has no
-    // business on their page, so this reads as "not found" rather than as a
-    // page with the details removed.
-    if (!board) {
-      const mine = await applicantIdsIAmInterviewing(ctx, userId);
-      if (!mine.has(args.id.toString())) return null;
+    // Same rule as the list, shared with it so the two can't disagree: someone
+    // with no business on this page gets "not found" rather than a page with
+    // the details removed, which would confirm that a named person applied.
+    if (!(await canAccessApplicant(ctx, userId, applicant, profile ?? null))) {
+      return null;
     }
 
-    // The CV and written answers are first-stage review material, so they are
-    // board-only - except for someone actually interviewing this applicant,
-    // who needs the context to run the interview. That holds for either round:
-    // an assessment centre interviewer, or a TI Reviewer taking their call.
+    // The CV and written answers are the application round's review material.
+    // The board always; a CV Reviewer while the applicant is still in that
+    // round, since reading them IS the job; and anyone interviewing this
+    // applicant in either round, who needs the context to run the interview.
     const canViewApplication =
       board ||
+      (!!profile &&
+        canReviewApplications(profile) &&
+        applicant.stage === "applied") ||
       (await isUserSignedUpForInterview(
         ctx,
         args.id,

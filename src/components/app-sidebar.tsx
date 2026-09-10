@@ -80,6 +80,7 @@ export function AppSidebar() {
     isCvReviewer,
     isAdminSpecialRole,
     canConductTelephoneInterviews,
+    canReviewApplications,
     isAlumni,
   } = useCurrentProfile();
   const pendingSignUps = useQuery(api.profiles.listPendingSignUps);
@@ -130,7 +131,9 @@ export function AppSidebar() {
             <SidebarMenu>
               {/* Applications: hidden from alumni, unless they hold a role
                   that needs it - a TI Reviewer signs up here. */}
-              {(!isAlumni || canConductTelephoneInterviews) && (
+              {(!isAlumni ||
+                canConductTelephoneInterviews ||
+                canReviewApplications) && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={isInApplications}

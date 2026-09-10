@@ -63,3 +63,22 @@ export function isAdminSpecialRole(profile: {
   }
   return profile.specialRole === "admin";
 }
+
+/**
+ * May this person review the application round - the CV and written answers of
+ * applicants who have applied but not yet been interviewed?
+ *
+ * The board plus the CV Reviewer special role. Note it grants the whole
+ * application review, both CV and Responses: those are the two factors of one
+ * review, and half a review isn't a thing the model can express.
+ */
+export function canReviewApplications(profile: {
+  role: string;
+  specialRole?: string;
+  status?: string;
+}): boolean {
+  if (profile.status !== undefined && profile.status !== "approved") {
+    return false;
+  }
+  return isBoardMember(profile) || profile.specialRole === "cv_reviewer";
+}

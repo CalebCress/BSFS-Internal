@@ -9,6 +9,10 @@ export function useCurrentProfile() {
   const canRecordAttendance =
     hasAdminAccess || profile?.specialRole === "attendance_tracker";
   const isCvReviewer = profile?.specialRole === "cv_reviewer";
+  // Reviews the application round - CVs and written answers. The board, plus
+  // the CV Reviewer role. Mirrors canReviewApplications in convex/permissions.
+  const canReviewApplications =
+    profile?.status === "approved" && (isBoardMember || isCvReviewer);
   // The Admin special role specifically - NOT hasAdminAccess, which every
   // board member passes. Mirrors isAdminSpecialRole in convex/permissions.
   const isAdminSpecialRole =
@@ -25,6 +29,7 @@ export function useCurrentProfile() {
     hasAdminAccess,
     canRecordAttendance,
     isCvReviewer,
+    canReviewApplications,
     isAdminSpecialRole,
     canConductTelephoneInterviews,
     isCommitteeMember: profile?.role === "committee_member",

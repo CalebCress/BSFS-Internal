@@ -128,8 +128,12 @@ export function ApplicantDetailPage() {
     }
   };
 
-  const { isBoardMember, hasAdminAccess, canConductTelephoneInterviews } =
-    useCurrentProfile();
+  const {
+    isBoardMember,
+    hasAdminAccess,
+    canConductTelephoneInterviews,
+    canReviewApplications,
+  } = useCurrentProfile();
 
   // Application and telephone reviews are board-only, so a committee member
   // must not be offered them - nor be defaulted onto one, which would leave
@@ -140,6 +144,7 @@ export function ApplicantDetailPage() {
     canSeeReviewType(type, {
       board: isBoardMember,
       telephone: canConductTelephoneInterviews,
+      application: canReviewApplications,
     })
   );
 

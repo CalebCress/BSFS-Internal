@@ -1,5 +1,6 @@
 import type { QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { canReviewApplications, isBoardMember } from "./permissions";
 
 /**
  * Which applicants a member is personally involved with.
@@ -34,4 +35,32 @@ export async function applicantIdsIAmInterviewing(
     applicantIds.add(slot.applicantId.toString());
   }
   return applicantIds;
+}
+
+/**
+ * May this person open this applicant's record?
+ *
+ * Three ways in, and no others:
+ *   - the board, who run the whole pipeline;
+ *   - a CV Reviewer, but only while the applicant is still in the application
+ *     round, which is the round they were given;
+ *   - anyone signed up to interview that applicant, in either round.
+ *
+ * Shared by applicants.list, applicants.getById and the review queries, so the
+ * list someone is shown and the records they can open can't disagree.
+ */
+export async function canAccessApplicant(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  applicant: { _id: Id<"applicants">; stage: string },
+  profile: { role: string; specialRole?: string; status?: string } | null
+): Promise<boolean> {
+  if (!profile) return false;
+  if (isBoardMember(profile)) return true;
+  if (canReviewApplications(profile) && applicant.stage === "applied") {
+    return true;
+  }
+
+  const mine = await applicantIdsIAmInterviewing(ctx, userId);
+  return mine.has(applicant._id.toString());
 }

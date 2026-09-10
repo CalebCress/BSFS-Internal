@@ -1,11 +1,15 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { applicantIdsIAmInterviewing } from "./interviewAccess";
+import {
+  applicantIdsIAmInterviewing,
+  canAccessApplicant,
+} from "./interviewAccess";
 import { query, mutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
   canConductTelephoneInterviews,
+  canReviewApplications,
   isAdminSpecialRole,
   isBoardMember,
 } from "./permissions";
@@ -86,14 +90,15 @@ async function canSeeApplicant(
   userId: Id<"users">,
   applicantId: Id<"applicants">
 ): Promise<boolean> {
+  const applicant = await ctx.db.get(applicantId);
+  if (!applicant) return false;
+
   const profile = await ctx.db
     .query("profiles")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
     .unique();
-  if (!!profile && isBoardMember(profile)) return true;
 
-  const mine = await applicantIdsIAmInterviewing(ctx, userId);
-  return mine.has(applicantId.toString());
+  return await canAccessApplicant(ctx, userId, applicant, profile);
 }
 
 /**
@@ -116,6 +121,7 @@ async function canAccessReviewType(
   return canSeeReviewType(reviewType, {
     board: isBoardMember(profile),
     telephone: canConductTelephoneInterviews(profile),
+    application: canReviewApplications(profile),
   });
 }
 
@@ -181,6 +187,14 @@ export const submit = mutation({
 
     if (!(await canAccessReviewType(ctx, userId, args.reviewType))) {
       throw new Error("Only board members can review this stage");
+    }
+
+    // Reviewing implies reading, so it takes the same access as opening the
+    // record. Without this a CV Reviewer could score an applicant who has
+    // already moved past the application round - someone they can no longer
+    // see, and whose CV they can no longer read.
+    if (!(await canSeeApplicant(ctx, userId, args.applicantId))) {
+      throw new Error("You don't have access to this applicant");
     }
 
     // Restrict telephone/AC reviews to signed-up interviewers

@@ -25,6 +25,7 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
     isCvReviewer,
     isAdminSpecialRole,
     canConductTelephoneInterviews,
+    canReviewApplications,
     isAlumni,
     isLoading,
   } = useCurrentProfile();
@@ -60,7 +61,8 @@ export function RequireAccess({ check, children }: RequireAccessProps) {
     // needs these pages - a TI Reviewer has to reach the schedule they sign up
     // on and the applicants they take.
     case "applications":
-      allowed = !isAlumni || canConductTelephoneInterviews;
+      allowed =
+        !isAlumni || canConductTelephoneInterviews || canReviewApplications;
       break;
   }
 
