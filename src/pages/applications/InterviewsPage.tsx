@@ -34,6 +34,14 @@ import { toast } from "sonner";
 
 type SlotType = "telephone" | "assessment_center";
 
+/**
+ * Whether the "Assign Applicant" dropdown is shown on slot cards.
+ *
+ * Off for now - see ALLOW_MANUAL_ASSIGNMENT in convex/interviewSlots.ts, which
+ * is the one that actually gates the write. Flip both together.
+ */
+const ALLOW_MANUAL_ASSIGNMENT = false;
+
 /** The bits of a slot the delete confirmation needs to describe it. */
 type SlotToDelete = {
   _id: Id<"interviewSlots">;
@@ -44,6 +52,13 @@ type SlotToDelete = {
   applicantName: string | null;
   signupCount: number;
 };
+
+/** "11 Sep", for the booked-at note in the assign dropdown. */
+const formatShortDate = (dateStr: string) =>
+  new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
 
 /** "HH:MM" as minutes past midnight, for comparing time windows. */
 const toMinutes = (time: string) => {
@@ -138,6 +153,21 @@ export function InterviewsPage() {
   );
 
   // Applicants filtered by slot type for reassign dropdown
+  // Where each applicant is already booked, per stage, so the dropdown can
+  // say so: assigning them elsewhere is a move, and the option should read
+  // like one rather than look like a free pick.
+  const bookedAt = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of slots ?? []) {
+      if (!s.applicantId) continue;
+      const key = `${s.type}:${s.applicantId}`;
+      const when = `${formatShortDate(s.date)} ${s.startTime}`;
+      const existing = map.get(key);
+      map.set(key, existing ? `${existing}, ${when}` : when);
+    }
+    return map;
+  }, [slots]);
+
   const applicantsForReassign = useCallback(
     (slotType: SlotType) => {
       if (!applicants) return [];
@@ -147,9 +177,10 @@ export function InterviewsPage() {
           _id: a._id,
           firstName: a.firstName,
           lastName: a.lastName,
+          bookedAt: bookedAt.get(`${slotType}:${a._id}`) ?? null,
         }));
     },
-    [applicants]
+    [applicants, bookedAt]
   );
 
   const handleSignup = async (slotId: Id<"interviewSlots">) => {
@@ -417,10 +448,17 @@ export function InterviewsPage() {
                           ? () => setManagingSlotId(slot._id)
                           : undefined
                       }
-                      onReassign={(applicantId) =>
-                        void handleReassign(slot._id, applicantId)
+                      onReassign={
+                        ALLOW_MANUAL_ASSIGNMENT
+                          ? (applicantId) =>
+                              void handleReassign(slot._id, applicantId)
+                          : undefined
                       }
-                      applicantsForReassign={applicantsForReassign(slot.type)}
+                      applicantsForReassign={
+                        ALLOW_MANUAL_ASSIGNMENT
+                          ? applicantsForReassign(slot.type)
+                          : undefined
+                      }
                       conflictWith={conflictFor(slot)}
                       signingUp={loadingSlot === slot._id}
                       cancelling={loadingSlot === slot._id}

@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
   canConductTelephoneInterviews,
@@ -24,6 +24,18 @@ const slotTypeValidator = v.union(
   v.literal("telephone"),
   v.literal("assessment_center")
 );
+
+/**
+ * Whether board members can put an applicant on a slot by hand.
+ *
+ * Turned OFF for now. Applicants book themselves through their invite link,
+ * and the hand-assignment dropdown was how seven applicants ended up holding
+ * two, three or four telephone slots at once: picking a name on a card added
+ * a booking without releasing the one they already had. `update` now moves
+ * rather than duplicates, so flipping this back to true is safe - keep it in
+ * step with the same flag in src/pages/applications/InterviewsPage.tsx.
+ */
+export const ALLOW_MANUAL_ASSIGNMENT = false;
 
 // Batch create interview slots from a time range
 export const batchCreate = mutation({
@@ -247,7 +259,15 @@ export const list = query({
   },
 });
 
-// Reassign or unassign an applicant on a slot (board members only)
+/**
+ * Move an applicant onto a slot, or clear it (board members only).
+ *
+ * An applicant holds one slot per stage, so assigning them here releases any
+ * other slot of the same type they hold, in the same transaction - the same
+ * rule the public booking flow enforces. Slots of the other stage are left
+ * alone: the telephone slot stays on record after the assessment centre is
+ * booked.
+ */
 export const update = mutation({
   args: {
     slotId: v.id("interviewSlots"),
@@ -265,10 +285,59 @@ export const update = mutation({
       throw new Error("Only board members can reassign applicants");
     }
 
+    if (!ALLOW_MANUAL_ASSIGNMENT) {
+      throw new Error(
+        "Assigning applicants by hand is currently disabled. Applicants book through their invite link."
+      );
+    }
+
     const slot = await ctx.db.get(args.slotId);
     if (!slot) throw new Error("Slot not found");
 
+    if (args.applicantId !== undefined) {
+      const applicant = await ctx.db.get(args.applicantId);
+      if (!applicant) throw new Error("Applicant not found");
+
+      const held = await ctx.db
+        .query("interviewSlots")
+        .withIndex("by_applicant", (q) => q.eq("applicantId", args.applicantId))
+        .collect();
+      for (const other of held) {
+        if (other._id !== args.slotId && other.type === slot.type) {
+          await ctx.db.patch(other._id, { applicantId: undefined });
+        }
+      }
+    }
+
     await ctx.db.patch(args.slotId, { applicantId: args.applicantId });
+  },
+});
+
+/**
+ * Release applicants from specific slots, run from the CLI or dashboard.
+ *
+ * Used to clean up after the duplicate-assignment bug above: the slot ids are
+ * given explicitly so nothing is inferred about which of an applicant's
+ * bookings is the real one. Returns what was cleared so the run can be
+ * checked against the intent.
+ */
+export const releaseApplicants = internalMutation({
+  args: { slotIds: v.array(v.id("interviewSlots")) },
+  handler: async (ctx, args) => {
+    const released: { slotId: string; date: string; startTime: string; applicantId: string }[] = [];
+    for (const slotId of args.slotIds) {
+      const slot = await ctx.db.get(slotId);
+      if (!slot) throw new Error(`Slot ${slotId} not found`);
+      if (slot.applicantId === undefined) continue;
+      released.push({
+        slotId,
+        date: slot.date,
+        startTime: slot.startTime,
+        applicantId: slot.applicantId,
+      });
+      await ctx.db.patch(slotId, { applicantId: undefined });
+    }
+    return released;
   },
 });
 

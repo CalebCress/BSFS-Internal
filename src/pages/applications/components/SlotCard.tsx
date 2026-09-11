@@ -34,6 +34,8 @@ interface ApplicantOption {
   _id: Id<"applicants">;
   firstName: string;
   lastName: string;
+  /** Where they are already booked for this stage, if anywhere. */
+  bookedAt: string | null;
 }
 
 interface SlotCardProps {
@@ -47,6 +49,10 @@ interface SlotCardProps {
   onSignup: () => void;
   onCancel: () => void;
   onDelete?: () => void;
+  /**
+   * Board members can move an applicant onto this slot. Moving is what it is:
+   * the server releases any other slot of this stage they hold.
+   */
   onReassign?: (applicantId: Id<"applicants"> | undefined) => void;
   applicantsForReassign?: ApplicantOption[];
   /** Time range of an existing signup this slot clashes with, if any. */
@@ -225,6 +231,12 @@ export function SlotCard({
                 {applicantsForReassign.map((a) => (
                   <SelectItem key={a._id} value={a._id}>
                     {a.firstName} {a.lastName}
+                    {a.bookedAt && a._id !== slot.applicantId && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        &mdash; booked {a.bookedAt}, will be moved
+                      </span>
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
