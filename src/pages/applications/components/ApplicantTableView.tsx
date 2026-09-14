@@ -13,7 +13,7 @@ import { StageBadge } from "./StageBadge";
 import { useCurrentProfile } from "@/hooks/useCurrentProfile";
 import { ZScoreBadge } from "./ScoreDisplay";
 import { ApplicantActionsMenu } from "./ApplicantActionsMenu";
-import { ArrowUpDown, Star } from "lucide-react";
+import { ArrowUpDown, MailCheck, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Stage } from "@/lib/constants";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -28,6 +28,9 @@ type Applicant = {
   averageScore: number | null;
   averageZScore: number | null;
   reviewCount: number;
+  // When the booking invite for their current interview stage was emailed;
+  // null if it hasn't been, or they aren't in an interview stage.
+  invitedForCurrentStageAt: number | null;
 };
 
 type SortField =
@@ -37,7 +40,8 @@ type SortField =
   | "appliedAt"
   | "averageScore"
   | "averageZScore"
-  | "reviewCount";
+  | "reviewCount"
+  | "invitedAt";
 type SortDir = "asc" | "desc";
 
 interface ApplicantTableViewProps {
@@ -95,6 +99,15 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
       // the reason to sort by this column at all.
       case "reviewCount":
         return dir * (a.reviewCount - b.reviewCount);
+      case "invitedAt": {
+        // Uninvited applicants sort last, like unscored ones.
+        const ai = a.invitedForCurrentStageAt;
+        const bi = b.invitedForCurrentStageAt;
+        if (ai == null && bi == null) return 0;
+        if (ai == null) return 1;
+        if (bi == null) return -1;
+        return dir * (ai - bi);
+      }
       default:
         return 0;
     }
@@ -144,6 +157,9 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
             <TableHead>
               <SortButton field="averageZScore">Avg. Z</SortButton>
             </TableHead>
+            <TableHead>
+              <SortButton field="invitedAt">Invited</SortButton>
+            </TableHead>
             <TableHead className="w-[60px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -151,7 +167,7 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
           {sorted.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={8}
+                colSpan={9}
                 className="h-24 text-center text-muted-foreground"
               >
                 No applicants found.
@@ -199,6 +215,21 @@ export function ApplicantTableView({ applicants }: ApplicantTableViewProps) {
                 </TableCell>
                 <TableCell>
                   <ZScoreBadge z={applicant.averageZScore} />
+                </TableCell>
+                <TableCell>
+                  {applicant.invitedForCurrentStageAt != null ? (
+                    <div
+                      className="flex items-center gap-1 text-sm"
+                      title="Booking invite emailed for their current stage"
+                    >
+                      <MailCheck className="h-3.5 w-3.5 text-green-600" />
+                      {formatDate(applicant.invitedForCurrentStageAt)}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      &mdash;
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   {isBoardMember && (

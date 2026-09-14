@@ -23,6 +23,7 @@ import {
   applicantIdsIAmInterviewing,
   canAccessApplicant,
 } from "./interviewAccess";
+import { invitedForCurrentStageAt } from "./interviewInvites";
 
 export const list = query({
   args: {
@@ -118,6 +119,7 @@ export const list = query({
       const { bookingToken: _bookingToken, ...rest } = applicant;
       return {
         ...rest,
+        invitedForCurrentStageAt: invitedForCurrentStageAt(applicant),
         reviewType: visible ? type : null,
         reviewCount: visible ? scoped.length : 0,
         averageScore: visible
@@ -175,10 +177,12 @@ export const getById = query({
     // bookingToken is a bearer capability - it only ever leaves the server via
     // the explicit ensureBookingToken mutation, never on a read.
     const { bookingToken: _bookingToken, ...rest } = applicant;
+    const invitedAt = invitedForCurrentStageAt(applicant);
 
     if (!canViewApplication) {
       return {
         ...rest,
+        invitedForCurrentStageAt: invitedAt,
         application: null,
         cvUrl: null,
         formTitle: form?.title ?? "Unknown Form",
@@ -199,6 +203,7 @@ export const getById = query({
 
     return {
       ...rest,
+      invitedForCurrentStageAt: invitedAt,
       application: application ?? null,
       cvUrl,
       formTitle: form?.title ?? "Unknown Form",

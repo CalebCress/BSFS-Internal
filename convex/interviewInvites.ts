@@ -24,7 +24,7 @@ const STAGE_LABELS = {
   assessment_center: "assessment centre",
 } as const;
 
-type InterviewStage = keyof typeof STAGE_LABELS;
+export type InterviewStage = keyof typeof STAGE_LABELS;
 
 /**
  * When this applicant was last emailed a booking link for THIS stage.
@@ -36,7 +36,7 @@ type InterviewStage = keyof typeof STAGE_LABELS;
  * The deprecated `inviteLastSentAt` had no stage attached. It is read as a
  * telephone invite, since that is the stage every applicant reaches first.
  */
-function invitedAt(
+export function invitedAt(
   applicant: Doc<"applicants">,
   stage: InterviewStage
 ): number | undefined {
@@ -44,6 +44,24 @@ function invitedAt(
   if (recorded !== undefined) return recorded;
   if (stage === "telephone") return applicant.inviteLastSentAt;
   return undefined;
+}
+
+/**
+ * When this applicant was invited to the interview they are currently in, or
+ * null when they aren't in an interview stage (or haven't been invited yet).
+ * This is what the UI shows as "invited": an earlier telephone invite says
+ * nothing about whether the assessment centre invite has gone out.
+ */
+export function invitedForCurrentStageAt(
+  applicant: Doc<"applicants">
+): number | null {
+  if (
+    applicant.stage !== "telephone" &&
+    applicant.stage !== "assessment_center"
+  ) {
+    return null;
+  }
+  return invitedAt(applicant, applicant.stage) ?? null;
 }
 
 /** Require an approved board member / admin. */

@@ -43,6 +43,7 @@ import {
   Star,
   Link2,
   Send,
+  MailCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -469,6 +470,20 @@ export function ApplicantDetailPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Interview booking link</p>
                 {canBookInterview ? (
+                  <>
+                  {/* Per stage: a telephone invite doesn't count once they're
+                      at the assessment centre, so this resets on promotion. */}
+                  {applicant.invitedForCurrentStageAt != null ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MailCheck className="h-3.5 w-3.5 text-green-600" />
+                      Invite for this stage emailed on{" "}
+                      {formatDate(applicant.invitedForCurrentStageAt)}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Not yet invited to this stage.
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
@@ -489,6 +504,7 @@ export function ApplicantDetailPage() {
                       {copyingLink ? "Sending..." : "Email booking link"}
                     </Button>
                   </div>
+                  </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     Available once the applicant is moved to an interview stage.
