@@ -1,7 +1,10 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { hasAdminAccess } from "./permissions";
+import { blockStarts } from "./eventBlocks";
 
 async function requireAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx as any);
@@ -17,6 +20,47 @@ async function requireAdmin(ctx: { db: any; auth: any }) {
   return userId;
 }
 
+/**
+ * The block length a sign-up sheet should be saved with. Only sign-up sheets
+ * have blocks, so any other type stores nothing - a stale value would
+ * silently turn the event back into a sheet if its type were changed later.
+ */
+function slotMinutesFor(
+  eventType: string | undefined,
+  slotMinutes: number | undefined
+): number | undefined {
+  if (eventType !== "signup") return undefined;
+  const minutes = slotMinutes ?? 30;
+  if (!Number.isInteger(minutes) || minutes < 5 || minutes > 240) {
+    throw new Error("Block length must be between 5 and 240 minutes");
+  }
+  return minutes;
+}
+
+/** Delete an event and everything hanging off it. */
+async function deleteEventCascade(ctx: MutationCtx, eventId: Id<"events">) {
+  // Associated resource + file
+  const resource = await ctx.db
+    .query("resources")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .unique();
+  if (resource) {
+    await ctx.storage.delete(resource.fileStorageId);
+    await ctx.db.delete(resource._id);
+  }
+
+  // Sign-up sheet entries
+  const signups = await ctx.db
+    .query("eventBlockSignups")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .collect();
+  for (const signup of signups) {
+    await ctx.db.delete(signup._id);
+  }
+
+  await ctx.db.delete(eventId);
+}
+
 export const create = mutation({
   args: {
     title: v.string(),
@@ -30,11 +74,13 @@ export const create = mutation({
       v.literal("corporate_market_update"),
       v.literal("workshop"),
       v.literal("regional"),
+      v.literal("signup"),
       v.literal("other"),
     )),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
     mandatoryAttendance: v.optional(v.boolean()),
+    slotMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await requireAdmin(ctx);
@@ -61,6 +107,7 @@ export const create = mutation({
         ? args.marketAssignee
         : undefined,
       mandatoryAttendance: mandatory,
+      slotMinutes: slotMinutesFor(args.eventType, args.slotMinutes),
     });
   },
 });
@@ -79,9 +126,11 @@ export const createRecurring = mutation({
       v.literal("corporate_market_update"),
       v.literal("workshop"),
       v.literal("regional"),
+      v.literal("signup"),
       v.literal("other"),
     )),
     mandatoryAttendance: v.optional(v.boolean()),
+    slotMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await requireAdmin(ctx);
@@ -125,6 +174,7 @@ export const createRecurring = mutation({
         isCorporateMarketUpdate: isCMU || undefined,
         eventType: args.eventType,
         mandatoryAttendance: mandatory,
+        slotMinutes: slotMinutesFor(args.eventType, args.slotMinutes),
         // corporateAssignee and marketAssignee intentionally omitted
         // so each occurrence gets independent assignments
       });
@@ -207,11 +257,13 @@ export const update = mutation({
       v.literal("corporate_market_update"),
       v.literal("workshop"),
       v.literal("regional"),
+      v.literal("signup"),
       v.literal("other"),
     )),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
     mandatoryAttendance: v.optional(v.boolean()),
+    slotMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -256,7 +308,32 @@ export const update = mutation({
     if (args.marketAssignee !== undefined)
       updates.marketAssignee = args.marketAssignee;
 
+    const nextType = args.eventType ?? event.eventType;
+    if (args.eventType !== undefined || args.slotMinutes !== undefined) {
+      updates.slotMinutes = slotMinutesFor(
+        nextType,
+        args.slotMinutes ?? event.slotMinutes
+      );
+    }
+
     await ctx.db.patch(args.eventId, updates);
+
+    // Reshaping the sheet (new hours, block length, or no longer a sheet)
+    // can leave names against blocks that no longer exist. Drop them rather
+    // than let them resurface if the sheet is later reshaped back.
+    const next = { ...event, ...updates };
+    const valid = new Set(
+      next.eventType === "signup"
+        ? blockStarts(next.startTime, next.endTime, next.slotMinutes ?? 30)
+        : []
+    );
+    const signups = await ctx.db
+      .query("eventBlockSignups")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    for (const signup of signups) {
+      if (!valid.has(signup.blockStart)) await ctx.db.delete(signup._id);
+    }
   },
 });
 
@@ -268,17 +345,7 @@ export const remove = mutation({
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
 
-    // Cascade-delete associated resource + file
-    const resource = await ctx.db
-      .query("resources")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .unique();
-    if (resource) {
-      await ctx.storage.delete(resource.fileStorageId);
-      await ctx.db.delete(resource._id);
-    }
-
-    await ctx.db.delete(args.eventId);
+    await deleteEventCascade(ctx, args.eventId);
   },
 });
 
@@ -293,17 +360,7 @@ export const removeSeries = mutation({
       .collect();
 
     for (const event of events) {
-      // Cascade-delete associated resource + file
-      const resource = await ctx.db
-        .query("resources")
-        .withIndex("by_event", (q) => q.eq("eventId", event._id))
-        .unique();
-      if (resource) {
-        await ctx.storage.delete(resource.fileStorageId);
-        await ctx.db.delete(resource._id);
-      }
-
-      await ctx.db.delete(event._id);
+      await deleteEventCascade(ctx, event._id);
     }
 
     return { deleted: events.length };

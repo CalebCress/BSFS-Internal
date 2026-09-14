@@ -16,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventDialog } from "./components/EventDialog";
 import { PresentationUpload } from "./components/PresentationUpload";
+import { SignupSheet } from "./components/SignupSheet";
 import {
   Plus,
   ChevronLeft,
@@ -49,12 +50,18 @@ interface EventData {
   seriesId?: string;
   createdBy: Id<"users">;
   isCorporateMarketUpdate?: boolean;
-  eventType?: "corporate_market_update" | "workshop" | "regional" | "other";
+  eventType?:
+    | "corporate_market_update"
+    | "workshop"
+    | "regional"
+    | "signup"
+    | "other";
   corporateAssignee?: Id<"users">;
   marketAssignee?: Id<"users">;
   corporateAssigneeName?: string | null;
   marketAssigneeName?: string | null;
   mandatoryAttendance?: boolean;
+  slotMinutes?: number;
 }
 
 export function CalendarPage() {
@@ -341,7 +348,9 @@ export function CalendarPage() {
                                 ? "bg-orange-100 text-orange-800"
                                 : event.eventType === "regional"
                                   ? "bg-teal-100 text-teal-800"
-                                  : "bg-blue-100 text-blue-800"
+                                  : event.eventType === "signup"
+                                    ? "bg-pink-100 text-pink-800"
+                                    : "bg-blue-100 text-blue-800"
                           }`}
                         >
                           {event.title}
@@ -392,7 +401,12 @@ export function CalendarPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Events */}
               {selectedEvents.map((event) => (
-                <Card key={event._id}>
+                <Card
+                  key={event._id}
+                  className={
+                    event.eventType === "signup" ? "sm:col-span-2" : undefined
+                  }
+                >
                   <CardContent className="space-y-2 p-4">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{event.title}</span>
@@ -556,6 +570,18 @@ export function CalendarPage() {
                         {hasAdminAccess && (
                           <PresentationUpload eventId={event._id} />
                         )}
+                      </div>
+                    )}
+                    {/* Sign-up sheet */}
+                    {event.eventType === "signup" && (
+                      <div className="space-y-1.5">
+                        <Badge
+                          variant="secondary"
+                          className="bg-pink-50 text-pink-700 text-[10px]"
+                        >
+                          Sign-up Sheet
+                        </Badge>
+                        <SignupSheet eventId={event._id} />
                       </div>
                     )}
                     {hasAdminAccess && event.seriesId && (

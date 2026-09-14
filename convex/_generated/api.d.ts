@@ -17,6 +17,8 @@ import type * as calendar from "../calendar.js";
 import type * as crons from "../crons.js";
 import type * as cvReviews from "../cvReviews.js";
 import type * as email from "../email.js";
+import type * as eventBlocks from "../eventBlocks.js";
+import type * as eventSignups from "../eventSignups.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as internships from "../internships.js";
@@ -55,6 +57,8 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   cvReviews: typeof cvReviews;
   email: typeof email;
+  eventBlocks: typeof eventBlocks;
+  eventSignups: typeof eventSignups;
   events: typeof events;
   http: typeof http;
   internships: typeof internships;

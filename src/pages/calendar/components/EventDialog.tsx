@@ -37,7 +37,12 @@ import { ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type EventType = "corporate_market_update" | "workshop" | "regional" | "other";
+type EventType =
+  | "corporate_market_update"
+  | "workshop"
+  | "regional"
+  | "signup"
+  | "other";
 
 interface EventData {
   _id: Id<"events">;
@@ -53,6 +58,7 @@ interface EventData {
   corporateAssignee?: Id<"users">;
   marketAssignee?: Id<"users">;
   mandatoryAttendance?: boolean;
+  slotMinutes?: number;
 }
 
 interface EventDialogProps {
@@ -76,7 +82,10 @@ const EVENT_TYPES = [
   { value: "corporate_market_update", label: "Market & Corporate Update" },
   { value: "workshop", label: "Workshop" },
   { value: "regional", label: "Regional Report" },
+  { value: "signup", label: "Sign-up Sheet" },
 ] as const;
+
+const BLOCK_LENGTHS = [15, 30, 45, 60, 90, 120] as const;
 
 export function EventDialog({
   open,
@@ -102,12 +111,14 @@ export function EventDialog({
   const [corporateAssignee, setCorporateAssignee] = useState("");
   const [marketAssignee, setMarketAssignee] = useState("");
   const [mandatoryAttendance, setMandatoryAttendance] = useState(false);
+  const [slotMinutes, setSlotMinutes] = useState("30");
   const [corporatePopoverOpen, setCorporatePopoverOpen] = useState(false);
   const [marketPopoverOpen, setMarketPopoverOpen] = useState(false);
 
   const isEditing = !!editingEvent;
   const isCorporateMarketUpdate = eventType === "corporate_market_update";
   const isRegional = eventType === "regional";
+  const isSignupSheet = eventType === "signup";
   const usesPresenter = isCorporateMarketUpdate || isRegional;
 
   // All approved members for assignment dropdowns
@@ -129,6 +140,7 @@ export function EventDialog({
       setMandatoryAttendance(editingEvent.mandatoryAttendance ?? false);
       setCorporateAssignee(editingEvent.corporateAssignee ?? "");
       setMarketAssignee(editingEvent.marketAssignee ?? "");
+      setSlotMinutes(String(editingEvent.slotMinutes ?? 30));
     } else {
       setTitle("");
       setDescription("");
@@ -143,6 +155,7 @@ export function EventDialog({
       setMandatoryAttendance(false);
       setCorporateAssignee("");
       setMarketAssignee("");
+      setSlotMinutes("30");
     }
   }, [editingEvent, open]);
 
@@ -176,6 +189,7 @@ export function EventDialog({
             usesPresenter && marketAssignee
               ? (marketAssignee as Id<"users">)
               : undefined,
+          slotMinutes: isSignupSheet ? Number(slotMinutes) : undefined,
         });
         toast.success("Event updated");
       } else if (recurring) {
@@ -195,6 +209,7 @@ export function EventDialog({
           eventType,
           isCorporateMarketUpdate: isCorporateMarketUpdate || undefined,
           mandatoryAttendance: mandatoryAttendance || undefined,
+          slotMinutes: isSignupSheet ? Number(slotMinutes) : undefined,
         });
         toast.success(`Created ${result.eventsCreated} recurring events`);
       } else {
@@ -221,6 +236,7 @@ export function EventDialog({
             usesPresenter && marketAssignee
               ? (marketAssignee as Id<"users">)
               : undefined,
+          slotMinutes: isSignupSheet ? Number(slotMinutes) : undefined,
         });
         toast.success("Event created");
       }
@@ -398,6 +414,29 @@ export function EventDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Sign-up sheets: how the time range is divided */}
+          {isSignupSheet && (
+            <div className="space-y-2">
+              <Label>Block Length</Label>
+              <Select value={slotMinutes} onValueChange={setSlotMinutes}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BLOCK_LENGTHS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {m} minutes
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Members sign up for as many blocks between the start and end
+                time as they like, and can see who else is in each block.
+              </p>
+            </div>
+          )}
 
           {/* Mandatory Attendance checkbox */}
           <div className="flex items-center gap-3">

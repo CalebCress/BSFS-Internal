@@ -178,14 +178,33 @@ export default defineSchema({
       v.literal("corporate_market_update"),
       v.literal("workshop"),
       v.literal("regional"),
+      v.literal("signup"),
       v.literal("other"),
     )),
     corporateAssignee: v.optional(v.id("users")),
     marketAssignee: v.optional(v.id("users")),
     mandatoryAttendance: v.optional(v.boolean()),
+    // Sign-up sheets only: the event's time range is divided into blocks of
+    // this many minutes that members put their name against. The blocks are
+    // derived from startTime/endTime rather than stored, so changing the
+    // event's hours reshapes the sheet without a migration.
+    slotMinutes: v.optional(v.number()),
   })
     .index("by_date", ["date"])
     .index("by_series", ["seriesId"]),
+
+  // A member's name against one block of a sign-up sheet event. A member can
+  // hold several blocks of the same sheet; one row each. `blockStart` is the
+  // block's "HH:MM", which identifies it since blocks aren't stored.
+  eventBlockSignups: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    blockStart: v.string(),
+    signedUpAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_user", ["userId"])
+    .index("by_event_user", ["eventId", "userId"]),
 
   // Attendance records
   attendance: defineTable({
