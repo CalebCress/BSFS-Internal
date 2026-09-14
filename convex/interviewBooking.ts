@@ -3,7 +3,7 @@ import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { resend, fromAddress, replyToAddresses } from "./email";
+import { resend, fromAddress, replyToAddresses, escapeHtml } from "./email";
 
 /**
  * Public (unauthenticated) interview booking.
@@ -157,14 +157,6 @@ function formatSlotDate(date: string): string {
     month: "long",
     year: "numeric",
   });
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 /**

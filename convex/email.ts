@@ -34,10 +34,45 @@ export function fromAddress(): string {
   return from;
 }
 
-/** Where applicants' replies should land. Falls back to the from address. */
+/**
+ * The sender for account emails (password resets), e.g. `BSFS App <help@bsfs.app>`.
+ * Separate from the recruitment sender so applicants and members see the
+ * right name in their inbox.
+ */
+export function resetFromAddress(): string {
+  const from = process.env.RESEND_RESET_FROM_EMAIL;
+  if (!from) {
+    throw new Error(
+      "RESEND_RESET_FROM_EMAIL is not set on this deployment. Set it to a " +
+        'verified Resend sender, e.g. "BSFS App <help@bsfs.app>".'
+    );
+  }
+  return from;
+}
+
+/** Where replies should land. Falls back to the from address. */
 export function replyToAddresses(): string[] | undefined {
   const replyTo = process.env.RESEND_REPLY_TO;
   return replyTo ? [replyTo] : undefined;
+}
+
+/** Public origin for links in emails, e.g. https://bsfs.example.com */
+export function siteUrl(): string {
+  const url = process.env.SITE_URL;
+  if (!url) {
+    throw new Error(
+      "SITE_URL is not set on this deployment, so links in emails cannot be built."
+    );
+  }
+  return url.replace(/\/+$/, "");
+}
+
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /**

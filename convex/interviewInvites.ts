@@ -4,7 +4,7 @@ import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { hasAdminAccess } from "./permissions";
-import { resend, fromAddress, replyToAddresses } from "./email";
+import { resend, fromAddress, replyToAddresses, siteUrl, escapeHtml } from "./email";
 import { RESCHEDULE_CUTOFF_HOURS } from "./interviewBooking";
 
 /**
@@ -77,25 +77,6 @@ async function requireAdmin(ctx: MutationCtx) {
     throw new Error("Only board members can send interview invites");
   }
   return profile;
-}
-
-/** Public origin for links in emails, e.g. https://bsfs.example.com */
-function siteUrl(): string {
-  const url = process.env.SITE_URL;
-  if (!url) {
-    throw new Error(
-      "SITE_URL is not set on this deployment, so booking links cannot be built."
-    );
-  }
-  return url.replace(/\/+$/, "");
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 /** Plain, deliverable HTML - no external CSS or images, which spam filters dislike. */

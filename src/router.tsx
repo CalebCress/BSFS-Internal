@@ -4,6 +4,7 @@ import { AuthLayout } from "./layouts/AuthLayout";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { RequireAccess } from "./components/RequireAccess";
 import { LoginPage } from "./pages/LoginPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { CalendarPage } from "./pages/calendar/CalendarPage";
 import { StocksPage } from "./pages/stocks/StocksPage";
 import { MyThesesPage } from "./pages/stocks/MyThesesPage";
@@ -43,6 +44,11 @@ export const router = createBrowserRouter([
     path: "/login",
     element: <AuthLayout />,
     children: [{ index: true, element: <LoginPage /> }],
+  },
+  {
+    path: "/reset-password",
+    element: <AuthLayout />,
+    children: [{ index: true, element: <ResetPasswordPage /> }],
   },
   {
     path: "/apply",

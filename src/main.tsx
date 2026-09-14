@@ -17,12 +17,19 @@ const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
  * the page path verbatim, so without this every token an applicant follows
  * would be recorded in a third-party dashboard. The path is collapsed to
  * /interview/[token] so the page is still counted, just not identified.
+ *
+ * /reset-password?email=...&code=... is the same story: the code lets anyone
+ * holding it set that account's password, so the query string is dropped.
  */
 function redactTokens(event: BeforeSendEvent): BeforeSendEvent {
   try {
     const url = new URL(event.url);
     if (/^\/interview\/.+/.test(url.pathname)) {
       url.pathname = "/interview/[token]";
+      return { ...event, url: url.toString() };
+    }
+    if (url.pathname === "/reset-password") {
+      url.search = "";
       return { ...event, url: url.toString() };
     }
   } catch {

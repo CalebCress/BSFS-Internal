@@ -65,6 +65,14 @@ https://<your-deployment>.convex.site
 
 Your Massive.com API key for the stocks feature. Set this in the Convex dashboard.
 
+### `SITE_URL` (required for emails)
+
+The public origin of the frontend, e.g. `https://app.bsfs.app`. Used to build the links in interview invite and password reset emails.
+
+### `RESEND_FROM_EMAIL` / `RESEND_RESET_FROM_EMAIL` / `RESEND_REPLY_TO` (required for emails)
+
+Verified Resend senders. Recruitment emails (interview invites, booking confirmations) go out from `RESEND_FROM_EMAIL`, e.g. `BSFS Recruitment <recruitment@bsfs.app>`; password reset emails go out from `RESEND_RESET_FROM_EMAIL`, e.g. `BSFS App <help@bsfs.app>`. Both use `RESEND_REPLY_TO` as the reply-to address. Set `RESEND_TEST_MODE=false` once the domain is verified, otherwise the Resend component drops real sends.
+
 ---
 
 ## 3. Environment Variables — Frontend Hosting
@@ -135,6 +143,11 @@ Since this is a single-page app with client-side routing, configure your hosting
 | `JWKS` | Convex dashboard | Yes (auth) |
 | `CONVEX_SITE_URL` | Convex dashboard | Yes (auth) |
 | `MASSIVE_API_KEY` | Convex dashboard | Yes (stocks) |
+| `SITE_URL` | Convex dashboard | Yes (emails) |
+| `RESEND_FROM_EMAIL` | Convex dashboard | Yes (emails) |
+| `RESEND_RESET_FROM_EMAIL` | Convex dashboard | Yes (password reset) |
+| `RESEND_REPLY_TO` | Convex dashboard | Yes (emails) |
+| `RESEND_TEST_MODE` | Convex dashboard | Set to `false` in prod |
 | `VITE_CONVEX_URL` | Frontend hosting | Yes |
 | `VITE_CONVEX_SITE_URL` | Frontend hosting | Yes |
 
