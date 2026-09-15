@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { type Id } from "../../../convex/_generated/dataModel";
@@ -60,6 +60,17 @@ const formatShortDate = (dateStr: string) =>
     month: "short",
   });
 
+/**
+ * A slot counts as past once it has been over for this long. The grace period
+ * keeps a slot that has just finished on screen while notes are still being
+ * written up.
+ */
+const PAST_GRACE_MS = 15 * 60 * 1000;
+
+/** Whether a slot ended more than PAST_GRACE_MS before `now`. */
+const isPastSlot = (slot: { date: string; endTime: string }, now: number) =>
+  new Date(`${slot.date}T${slot.endTime}:00`).getTime() + PAST_GRACE_MS < now;
+
 /** "HH:MM" as minutes past midnight, for comparing time windows. */
 const toMinutes = (time: string) => {
   const [h, m] = time.split(":").map(Number);
@@ -77,6 +88,14 @@ export function InterviewsPage() {
   const [editAllOpen, setEditAllOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | SlotType>("all");
   const [assignedOnly, setAssignedOnly] = useState(false);
+  const [showPast, setShowPast] = useState(false);
+  // Re-read the clock each minute so a slot drops off once it is past even if
+  // the page has been left open.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
   // Deleting a slot also drops its signups, so it is confirmed before it runs.
   const [pendingDelete, setPendingDelete] = useState<SlotToDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -113,7 +132,8 @@ export function InterviewsPage() {
     const filtered = slots.filter(
       (s) =>
         (typeFilter === "all" || s.type === typeFilter) &&
-        (!assignedOnly || s.applicantId !== undefined)
+        (!assignedOnly || s.applicantId !== undefined) &&
+        (showPast || !isPastSlot(s, now))
     );
     return filtered.reduce(
       (acc, slot) => {
@@ -123,7 +143,7 @@ export function InterviewsPage() {
       },
       {} as Record<string, typeof slots>
     );
-  }, [slots, typeFilter, assignedOnly]);
+  }, [slots, typeFilter, assignedOnly, showPast, now]);
 
   /**
    * The time range of an existing signup that clashes with this slot, if any.
@@ -363,6 +383,20 @@ export function InterviewsPage() {
                 Only slots with an applicant
               </Label>
             </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="show-past"
+                checked={showPast}
+                onCheckedChange={(checked) => setShowPast(checked === true)}
+              />
+              <Label
+                htmlFor="show-past"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Show past interviews
+              </Label>
+            </div>
           </div>
 
           {/* Slot list grouped by date */}
@@ -385,7 +419,7 @@ export function InterviewsPage() {
               </p>
               <p className="text-sm">
                 {slots.length > 0
-                  ? "Try clearing the type filter or the applicant checkbox."
+                  ? "Try clearing the type filter, the applicant checkbox, or showing past interviews."
                   : hasAdminAccess
                     ? 'Click "Create Slots" to schedule interviews.'
                     : "No interview slots have been created yet."}
